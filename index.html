@@ -108,6 +108,17 @@
 <section id="tab-seller" class="tab-section">
   <div class="panel">
     <h2 data-i18n="sellerHeading">Myyjän (yrityksen) tiedot</h2>
+    <div class="grid" style="margin-bottom:14px;">
+      <div>
+        <label data-i18n="l_companySelect">Valitse yritys</label>
+        <select id="companySelect"></select>
+      </div>
+      <div style="display:flex; align-items:flex-end; gap:8px;">
+        <button class="btn secondary" id="newCompanyBtn" data-i18n="newCompanyBtn">+ Uusi yritys</button>
+        <button class="btn danger" id="deleteCompanyBtn" data-i18n="deleteCompanyBtn">Poista yritys</button>
+      </div>
+    </div>
+    <p id="noCompanyNote" class="note" data-i18n="noCompaniesYet" style="display:none;">Ei vielä tallennettuja yrityksiä. Täytä tiedot alle ja tallenna luodaksesi ensimmäisen yrityksen.</p>
     <div class="grid">
       <div>
         <label data-i18n="l_sellerName">Yrityksen / myyjän nimi *</label>
@@ -217,6 +228,7 @@
 <section id="tab-invoice" class="tab-section" style="display:none;">
   <div class="panel">
     <h2 data-i18n="invoiceBasicsHeading">Laskun perustiedot</h2>
+    <p id="activeCompanyNote" class="note" style="display:none;"></p>
     <div class="grid">
       <div>
         <label data-i18n="l_customer">Asiakas</label>
@@ -335,6 +347,11 @@ fi: {
   backupLabel:'Tietojen varmuuskopiointi:', exportBtn:'Vie tiedot tiedostoon (.json)', importBtn:'Tuo tiedot tiedostosta',
   backupHelp:'Suositus: vie varmuuskopio aina kun olet päivittänyt yritys- tai asiakastietoja, erityisesti jos avaat tämän tiedoston suoraan (file://) etkä paikallisen palvelimen kautta – selaimet eivät aina säilytä tietoja pysyvästi tiedostoina avatuilla sivuilla.',
   sellerHeading:'Myyjän (yrityksen) tiedot',
+  l_companySelect:'Valitse yritys', newCompanyBtn:'+ Uusi yritys', deleteCompanyBtn:'Poista yritys',
+  noCompaniesYet:'Ei vielä tallennettuja yrityksiä. Täytä tiedot alle ja tallenna luodaksesi ensimmäisen yrityksen.',
+  deleteCompanyConfirm:'Poistetaanko tämä yritys? Myös sen tallennetut asiakkaat ja laskunumerointi poistetaan. Tätä ei voi perua.',
+  activeCompanyPrefix:'Laaditaan laskua yritykselle: ',
+  noActiveCompanyWarning:'Valitse tai luo yritys ensin välilehdellä "Yrityksen tiedot".',
   l_sellerName:'Yrityksen / myyjän nimi *', l_ytunnus:'Y-tunnus * (muoto 1234567-8)', l_vatid:'ALV-tunniste (muodostuu automaattisesti)',
   l_street:'Katuosoite *', l_zipcity:'Postinumero ja -toimipaikka *', l_country:'Maa', l_phone:'Puhelin', l_email:'Sähköposti', l_web:'Verkkosivu',
   l_iban:'IBAN-tilinumero *', l_bic:'BIC/SWIFT', l_termdays:'Maksuehto oletuksena (pv netto)', l_lateinterest:'Viivästyskorko % p.a. (Korkolaki 4/4a §)',
@@ -385,6 +402,11 @@ sv: {
   backupLabel:'Säkerhetskopiering:', exportBtn:'Exportera data till fil (.json)', importBtn:'Importera data från fil',
   backupHelp:'Rekommendation: exportera en säkerhetskopia varje gång du uppdaterat företags- eller kunduppgifter, särskilt om du öppnar filen direkt (file://) och inte via en lokal server – webbläsare sparar inte alltid data permanent på sidor som öppnas som filer.',
   sellerHeading:'Säljarens (företagets) uppgifter',
+  l_companySelect:'Välj företag', newCompanyBtn:'+ Nytt företag', deleteCompanyBtn:'Ta bort företag',
+  noCompaniesYet:'Inga sparade företag ännu. Fyll i uppgifterna nedan och spara för att skapa ditt första företag.',
+  deleteCompanyConfirm:'Ta bort detta företag? Även dess sparade kunder och fakturanumrering tas bort. Detta kan inte ångras.',
+  activeCompanyPrefix:'Fakturerar för företaget: ',
+  noActiveCompanyWarning:'Välj eller skapa ett företag först under fliken "Företagsuppgifter".',
   l_sellerName:'Företagets / säljarens namn *', l_ytunnus:'FO-nummer * (format 1234567-8)', l_vatid:'Momsnummer (skapas automatiskt)',
   l_street:'Gatuadress *', l_zipcity:'Postnummer och -ort *', l_country:'Land', l_phone:'Telefon', l_email:'E-post', l_web:'Webbplats',
   l_iban:'IBAN-kontonummer *', l_bic:'BIC/SWIFT', l_termdays:'Betalningsvillkor som standard (dagar netto)', l_lateinterest:'Dröjsmålsränta % p.a. (Räntelagen 4/4a §)',
@@ -435,6 +457,11 @@ en: {
   backupLabel:'Data backup:', exportBtn:'Export data to file (.json)', importBtn:'Import data from file',
   backupHelp:'Recommendation: export a backup every time you update company or customer details, especially if you open this file directly (file://) rather than through a local server — browsers do not always persist data reliably for pages opened as files.',
   sellerHeading:'Seller (company) details',
+  l_companySelect:'Select company', newCompanyBtn:'+ New company', deleteCompanyBtn:'Delete company',
+  noCompaniesYet:'No saved companies yet. Fill in the details below and save to create your first company.',
+  deleteCompanyConfirm:'Delete this company? Its saved customers and invoice numbering will also be removed. This cannot be undone.',
+  activeCompanyPrefix:'Invoicing as: ',
+  noActiveCompanyWarning:'Select or create a company first on the "Company details" tab.',
   l_sellerName:'Company / seller name *', l_ytunnus:'Business ID / Y-tunnus * (format 1234567-8)', l_vatid:'VAT number (generated automatically)',
   l_street:'Street address *', l_zipcity:'Postal code and city *', l_country:'Country', l_phone:'Phone', l_email:'Email', l_web:'Website',
   l_iban:'IBAN account number *', l_bic:'BIC/SWIFT', l_termdays:'Default payment term (days net)', l_lateinterest:'Late payment interest % p.a. (Interest Act 4/4a §)',
@@ -493,6 +520,7 @@ function applyLang(lang){
     else { el.innerHTML = val; }
   });
   LS.set('lang', lang);
+  if(typeof updateActiveCompanyNote==='function') updateActiveCompanyNote();
 }
 document.querySelectorAll('[data-lang]').forEach(btn=>{
   btn.addEventListener('click', ()=> applyLang(btn.dataset.lang));
@@ -528,7 +556,7 @@ const LS = {
       try{ localStorage.setItem('fiInvoiceApp_'+key, JSON.stringify(val)); }catch(e){ /* ignore, memory copy still holds */ }
     }
   },
-  allKeys(){ return ['seller','customers','counters','invoices']; }
+  allKeys(){ return ['companies','activeCompanyId','customersByCompany','countersByCompany','invoicesByCompany','seller','customers','counters','invoices']; }
 };
 const $ = id => document.getElementById(id);
 const fmt2 = n => (Math.round(n*100)/100).toFixed(2);
@@ -552,6 +580,8 @@ function importAllData(file){
     try{
       const data = JSON.parse(reader.result);
       LS.allKeys().forEach(k=>{ if(data[k]!==undefined && data[k]!==null) LS.set(k, data[k]); });
+      migrateOldSchema();
+      renderCompanySelect();
       loadSeller();
       renderCustomerList();
       populateCustomerSelect();
@@ -689,9 +719,110 @@ function vatRates(){
   ];
 }
 
+/* ================= COMPANIES (multi-company profiles) ================= */
+// Data model: `companies` is an array of {id, name, ytunnus, street, ...} objects
+// (same fields the old single `seller` object had, plus an id). `activeCompanyId`
+// points at the company currently being worked on. Customers, invoice-number
+// counters, and saved invoice history are all scoped per company via
+// `customersByCompany`, `countersByCompany`, `invoicesByCompany` (each an object
+// keyed by company id). This lets EcoBooks keep separate, legally-required
+// sequential invoice numbering and separate customer lists per client company.
+function genCompanyId(){ return 'c_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+function loadCompanies(){ return LS.get('companies', []); }
+function saveCompanyList(list){ LS.set('companies', list); }
+function getActiveCompanyId(){ return LS.get('activeCompanyId', null); }
+function setActiveCompanyId(id){ LS.set('activeCompanyId', id); }
+function getActiveCompany(){
+  const id = getActiveCompanyId();
+  if(!id) return {};
+  return loadCompanies().find(c=> c.id===id) || {};
+}
+// One-time migration: older versions of this app stored a single company under
+// the flat `seller` key, with flat `customers`/`counters`/`invoices` keys. If we
+// find that old data and no `companies` list yet, wrap it into the new
+// per-company schema so existing users don't lose their data.
+function migrateOldSchema(){
+  if(LS.get('companies', null) !== null) return; // already migrated / already on new schema
+  const oldSeller = LS.get('seller', null);
+  if(!oldSeller || !oldSeller.name){ LS.set('companies', []); return; }
+  const id = genCompanyId();
+  const company = Object.assign({}, oldSeller, {id});
+  LS.set('companies', [company]);
+  LS.set('activeCompanyId', id);
+  const oldCustomers = LS.get('customers', null);
+  if(oldCustomers){ const m = LS.get('customersByCompany', {}); m[id] = oldCustomers; LS.set('customersByCompany', m); }
+  const oldCounters = LS.get('counters', null);
+  if(oldCounters){ const m = LS.get('countersByCompany', {}); m[id] = oldCounters; LS.set('countersByCompany', m); }
+  const oldInvoices = LS.get('invoices', null);
+  if(oldInvoices){ const m = LS.get('invoicesByCompany', {}); m[id] = oldInvoices; LS.set('invoicesByCompany', m); }
+}
+function updateActiveCompanyNote(){
+  const c = getActiveCompany();
+  const note = $('activeCompanyNote');
+  if(c && c.name){ note.style.display='block'; note.textContent = t('activeCompanyPrefix')+c.name; }
+  else { note.style.display='none'; note.textContent=''; }
+}
+function renderCompanySelect(){
+  const list = loadCompanies();
+  const sel = $('companySelect');
+  const activeId = getActiveCompanyId();
+  const activeExists = list.some(c=> c.id===activeId);
+  let html = list.map(c=> `<option value="${c.id}" ${c.id===activeId?'selected':''}>${c.name}</option>`).join('');
+  if(!activeExists) html = `<option value="" selected>-- ${t('newCompanyBtn')} --</option>` + html;
+  sel.innerHTML = html;
+  $('noCompanyNote').style.display = list.length? 'none':'block';
+  $('deleteCompanyBtn').style.display = (list.length && activeExists)? 'inline-block':'none';
+  updateActiveCompanyNote();
+}
+$('companySelect').addEventListener('change', ()=>{
+  selectCompany($('companySelect').value);
+});
+function selectCompany(id){
+  setActiveCompanyId(id||null);
+  renderCompanySelect();
+  loadSeller();
+  renderCustomerList();
+  populateCustomerSelect();
+  $('i_number').value=''; $('i_refbase').value='';
+  populateInvoiceDefaults();
+}
+$('newCompanyBtn').addEventListener('click', ()=>{
+  setActiveCompanyId(null);
+  renderCompanySelect();
+  clearSellerForm();
+  $('s_name').focus();
+});
+$('deleteCompanyBtn').addEventListener('click', ()=>{
+  const id = getActiveCompanyId();
+  if(!id) return;
+  if(!confirm(t('deleteCompanyConfirm'))) return;
+  saveCompanyList(loadCompanies().filter(c=> c.id!==id));
+  ['customersByCompany','countersByCompany','invoicesByCompany'].forEach(k=>{
+    const m = LS.get(k, {}); delete m[id]; LS.set(k, m);
+  });
+  const remaining = loadCompanies();
+  setActiveCompanyId(remaining.length? remaining[0].id : null);
+  renderCompanySelect();
+  loadSeller();
+  renderCustomerList();
+  populateCustomerSelect();
+  populateInvoiceDefaults();
+});
+function clearSellerForm(){
+  ['s_name','s_ytunnus','s_street','s_zipcity','s_phone','s_email','s_web','s_iban','s_bic'].forEach(id=> $(id).value='');
+  $('s_country').value='Suomi';
+  $('s_termdays').value=14;
+  $('s_lateinterest').value=10.5;
+  $('s_prepay').value='yes';
+  $('s_reftype').value='national';
+  $('logoPreview').src=''; $('logoPreview').style.display='none';
+  updateVatIdField();
+  validateSellerFields();
+}
+
 /* ================= SELLER ================= */
 function loadSeller(){
-  const s = LS.get('seller', {});
+  const s = getActiveCompany();
   $('s_name').value = s.name||'';
   $('s_ytunnus').value = s.ytunnus||'';
   $('s_street').value = s.street||'';
@@ -706,7 +837,7 @@ function loadSeller(){
   $('s_lateinterest').value = s.lateinterest!=null? s.lateinterest:10.5;
   $('s_prepay').value = s.prepay||'yes';
   $('s_reftype').value = s.reftype||'national';
-  if(s.logo){ $('logoPreview').src=s.logo; $('logoPreview').style.display='block'; }
+  if(s.logo){ $('logoPreview').src=s.logo; $('logoPreview').style.display='block'; } else { $('logoPreview').src=''; $('logoPreview').style.display='none'; }
   updateVatIdField();
   validateSellerFields();
 }
@@ -732,7 +863,11 @@ $('s_logofile').addEventListener('change', e=>{
   reader.readAsDataURL(f);
 });
 $('saveSeller').addEventListener('click', ()=>{
+  if(!$('s_name').value.trim()){ alert(t('errCompanyName')); return; }
+  let id = getActiveCompanyId();
+  if(!id) id = genCompanyId();
   const s = {
+    id,
     name: $('s_name').value.trim(), ytunnus: $('s_ytunnus').value.trim(),
     street: $('s_street').value.trim(), zipcity: $('s_zipcity').value.trim(), country: $('s_country').value.trim(),
     phone: $('s_phone').value.trim(), email: $('s_email').value.trim(), web: $('s_web').value.trim(),
@@ -741,15 +876,32 @@ $('saveSeller').addEventListener('click', ()=>{
     prepay: $('s_prepay').value, reftype: $('s_reftype').value,
     logo: $('logoPreview').style.display==='block'? $('logoPreview').src : ''
   };
-  LS.set('seller', s);
+  const list = loadCompanies();
+  const idx = list.findIndex(c=> c.id===id);
+  if(idx>=0) list[idx]=s; else list.push(s);
+  saveCompanyList(list);
+  setActiveCompanyId(id);
+  renderCompanySelect();
   $('sellerSavedMsg').textContent = t('savedMsg');
   setTimeout(()=> $('sellerSavedMsg').textContent='', 2500);
   populateInvoiceDefaults();
 });
 
 /* ================= CUSTOMERS ================= */
-function loadCustomers(){ return LS.get('customers', []); }
-function saveCustomers(list){ LS.set('customers', list); renderCustomerList(); populateCustomerSelect(); }
+function loadCustomers(){
+  const cid = getActiveCompanyId();
+  if(!cid) return [];
+  const all = LS.get('customersByCompany', {});
+  return all[cid] || [];
+}
+function saveCustomers(list){
+  const cid = getActiveCompanyId();
+  if(!cid) return;
+  const all = LS.get('customersByCompany', {});
+  all[cid] = list;
+  LS.set('customersByCompany', all);
+  renderCustomerList(); populateCustomerSelect();
+}
 function renderCustomerList(){
   const list = loadCustomers();
   const wrap = $('customerList');
@@ -780,6 +932,7 @@ $('saveCustomer').addEventListener('click', ()=>{
     custnum: $('c_custnum').value.trim()
   };
   if(!c.name || !c.street || !c.zipcity){ alert(t('custRequiredAlert')); return; }
+  if(!getActiveCompanyId()){ alert(t('noActiveCompanyWarning')); return; }
   const list = loadCustomers();
   const idx = Number($('c_editIndex').value);
   if(idx>=0) list[idx]=c; else list.push(c);
@@ -802,14 +955,20 @@ function populateCustomerSelect(){
 /* ================= INVOICE NUMBER COUNTER ================= */
 function nextInvoiceNumber(){
   const year = new Date().getFullYear();
-  const counters = LS.get('counters', {});
+  const cid = getActiveCompanyId();
+  const all = LS.get('countersByCompany', {});
+  const counters = cid? (all[cid]||{}) : {};
   const cur = counters[year] || 0;
   return {display: year+'-'+String(cur+1).padStart(3,'0'), year, seq: cur+1};
 }
 function bumpInvoiceCounter(year){
-  const counters = LS.get('counters', {});
+  const cid = getActiveCompanyId();
+  if(!cid) return;
+  const all = LS.get('countersByCompany', {});
+  const counters = all[cid] || {};
   counters[year] = (counters[year]||0)+1;
-  LS.set('counters', counters);
+  all[cid] = counters;
+  LS.set('countersByCompany', all);
 }
 
 /* ================= INVOICE LINES ================= */
@@ -871,7 +1030,7 @@ function recalcTotals(){
 
 /* ================= invoice defaults / reference wiring ================= */
 function populateInvoiceDefaults(){
-  const s = LS.get('seller', {});
+  const s = getActiveCompany();
   const n = nextInvoiceNumber();
   if(!$('i_number').value) $('i_number').value = n.display;
   if(!$('i_date').value) $('i_date').value = new Date().toISOString().slice(0,10);
@@ -911,8 +1070,8 @@ function dateYYMMDD(d){ if(!d) return '000000'; const [y,m,day]=d.split('-'); re
 
 $('renderInvoice').addEventListener('click', ()=>{
   const errors = [];
-  const s = LS.get('seller', {});
-  if(!s.name) errors.push(t('errCompanyName'));
+  const s = getActiveCompany();
+  if(!getActiveCompanyId() || !s.name) errors.push(t('noActiveCompanyWarning'));
   const yv = validateYtunnus(s.ytunnus||''); if(!yv.valid) errors.push(t('errSellerYtunnus')+yv.reason);
   const iv = validateFinnishIban(s.iban||''); if(!iv.valid) errors.push(t('errSellerIban')+iv.reason);
   if(!$('i_number').value) errors.push(t('errNumber'));
@@ -1052,11 +1211,15 @@ $('renderInvoice').addEventListener('click', ()=>{
 $('printInvoice').addEventListener('click', ()=> window.print());
 
 $('bumpNumber').addEventListener('click', ()=>{
+  const cid = getActiveCompanyId();
+  if(!cid){ alert(t('noActiveCompanyWarning')); return; }
   const n = nextInvoiceNumber();
   bumpInvoiceCounter(n.year);
-  const invoices = LS.get('invoices', []);
+  const all = LS.get('invoicesByCompany', {});
+  const invoices = all[cid] || [];
   invoices.push({number: $('i_number').value, date: $('i_date').value, total: $('totalsTable').textContent, savedAt: new Date().toISOString()});
-  LS.set('invoices', invoices);
+  all[cid] = invoices;
+  LS.set('invoicesByCompany', all);
   $('i_number').value=''; $('i_refbase').value='';
   populateInvoiceDefaults();
   alert(t('bumpAlert'));
@@ -1067,6 +1230,8 @@ $('bumpNumber').addEventListener('click', ()=>{
   const saved = LS.get('lang', 'fi');
   applyLang(saved);
 })();
+migrateOldSchema();
+renderCompanySelect();
 loadSeller();
 renderCustomerList();
 populateCustomerSelect();

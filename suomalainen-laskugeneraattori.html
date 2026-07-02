@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<title>EcoBooks Invoice Generator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.12.1/JsBarcode.all.min.js"></script>
+<style>
+  :root{
+    --ink:#1c2733; --muted:#5b6b7a; --line:#d8dee4; --accent:#0b5cab; --bg:#f5f7f9; --panel:#ffffff; --err:#b3261e; --ok:#1e7d34;
+  }
+  *{box-sizing:border-box;}
+  body{font-family:Arial, Helvetica, sans-serif; margin:0; background:var(--bg); color:var(--ink);}
+  header.app{background:var(--accent); color:#fff; padding:16px 24px; display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap;}
+  header.app h1{margin:0; font-size:20px;}
+  header.app p{margin:4px 0 0; font-size:13px; opacity:.9;}
+  .langSwitch{display:flex; gap:4px;}
+  .langSwitch button{background:rgba(255,255,255,.15); color:#fff; border:1px solid rgba(255,255,255,.5); padding:6px 12px; border-radius:5px; cursor:pointer; font-size:12px;}
+  .langSwitch button.active{background:#fff; color:var(--accent); font-weight:bold;}
+  nav.tabs{display:flex; gap:4px; background:#fff; border-bottom:1px solid var(--line); padding:0 24px; position:sticky; top:0; z-index:5;}
+  nav.tabs button{background:none; border:none; padding:12px 16px; font-size:14px; cursor:pointer; color:var(--muted); border-bottom:3px solid transparent;}
+  nav.tabs button.active{color:var(--accent); border-bottom-color:var(--accent); font-weight:bold;}
+  main{max-width:1100px; margin:0 auto; padding:20px 24px 80px;}
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px 20px; margin-bottom:16px;}
+  .panel h2{margin-top:0; font-size:16px;}
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px 16px;}
+  label{display:block; font-size:12px; color:var(--muted); margin-bottom:3px; margin-top:6px;}
+  input, select, textarea{width:100%; padding:7px 8px; border:1px solid var(--line); border-radius:5px; font-size:13px; font-family:inherit;}
+  textarea{min-height:60px;}
+  small.help{color:var(--muted); font-size:11px; display:block; margin-top:3px;}
+  .flag{font-size:11px; margin-top:4px; font-weight:bold;}
+  .flag.ok{color:var(--ok);} .flag.err{color:var(--err);}
+  button.btn{background:var(--accent); color:#fff; border:none; padding:9px 16px; border-radius:5px; font-size:13px; cursor:pointer;}
+  button.btn.secondary{background:#fff; color:var(--accent); border:1px solid var(--accent);}
+  button.btn.danger{background:#fff; color:var(--err); border:1px solid var(--err);}
+  button.btn:disabled{opacity:.5; cursor:not-allowed;}
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  table th, table td{border:1px solid var(--line); padding:6px; text-align:left; vertical-align:top;}
+  table th{background:#eef2f6; font-size:11px; text-transform:uppercase; letter-spacing:.02em;}
+  .list-row{display:flex; justify-content:space-between; align-items:center; border:1px solid var(--line); border-radius:6px; padding:8px 10px; margin-bottom:6px;}
+  .list-row .meta{font-size:12px; color:var(--muted);}
+  .row-actions button{margin-left:6px;}
+  .totals{margin-top:10px; width:320px; margin-left:auto;}
+  .totals td{border:none; padding:3px 4px;}
+  .totals tr.grand td{font-weight:bold; font-size:15px; border-top:2px solid var(--ink);}
+  .note{background:#fff8e1; border:1px solid #e6c65a; padding:10px 12px; border-radius:6px; font-size:12px; margin-top:8px;}
+  .badge{display:inline-block; font-size:10px; padding:2px 7px; border-radius:10px; background:#e5eef7; color:var(--accent); margin-left:6px;}
+
+  /* invoice preview */
+  #invoiceDoc{background:#fff; border:1px solid var(--line); padding:28px; font-size:13px;}
+  #invoiceDoc .idHead{display:flex; justify-content:space-between; gap:20px; border-bottom:2px solid var(--ink); padding-bottom:14px; margin-bottom:14px;}
+  #invoiceDoc .idHead h1{font-size:22px; margin:0 0 6px;}
+  #invoiceDoc .partyBlocks{display:flex; justify-content:space-between; gap:24px; margin-bottom:16px;}
+  #invoiceDoc .partyBlocks .block{flex:1;}
+  #invoiceDoc .partyBlocks h3{font-size:11px; text-transform:uppercase; color:var(--muted); margin:0 0 4px;}
+  #invoiceDoc table.meta-table{margin-bottom:14px;}
+  #invoiceDoc table.meta-table td{border:none; padding:2px 8px 2px 0; font-size:12px;}
+  #invoiceDoc table.lines th, #invoiceDoc table.lines td{font-size:12px;}
+  #invoiceDoc .payment-block{display:flex; gap:30px; margin-top:22px; border-top:1px solid var(--line); padding-top:16px; flex-wrap:wrap;}
+  #invoiceDoc .payment-block .info{flex:1; min-width:220px;}
+  #invoiceDoc .payment-block .barcode-wrap{text-align:center;}
+  #invoiceDoc .legal{margin-top:18px; font-size:10.5px; color:var(--muted); border-top:1px dashed var(--line); padding-top:10px; line-height:1.5;}
+  #logoPreview{max-height:60px; max-width:180px;}
+
+  @media print{
+    body *{visibility:hidden;}
+    #invoiceDoc, #invoiceDoc *{visibility:visible;}
+    #invoiceDoc{position:absolute; left:0; top:0; width:100%; border:none; padding:0;}
+    nav.tabs, header.app, .no-print{display:none !important;}
+  }
+</style>
+</head>
+<body>
+
+<header class="app">
+  <div>
+    <h1 data-i18n="appTitle">EcoBooks Laskugeneraattori</h1>
+    <p data-i18n="appSubtitle">Arvonlisäverolain laskumerkinnät · Finanssialan Pankkiviivakoodi (versio 4/5) · Kotimainen ja RF-viitenumero</p>
+  </div>
+  <div class="langSwitch no-print">
+    <button data-lang="fi" class="active">Suomi</button>
+    <button data-lang="sv">Svenska</button>
+    <button data-lang="en">English</button>
+  </div>
+</header>
+
+<nav class="tabs no-print">
+  <button data-tab="seller" class="active" data-i18n="tabSeller">1. Yrityksen tiedot</button>
+  <button data-tab="customers" data-i18n="tabCustomers">2. Asiakkaat</button>
+  <button data-tab="invoice" data-i18n="tabInvoice">3. Lasku</button>
+  <button data-tab="help" data-i18n="tabHelp">Ohje / lainsäädäntö</button>
+</nav>
+
+<div class="no-print" style="max-width:1100px;margin:12px auto 0;padding:0 24px;">
+  <div id="storageBanner" class="note" style="display:none;"></div>
+  <div class="panel" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:10px 14px;">
+    <b style="font-size:12px;" data-i18n="backupLabel">Tietojen varmuuskopiointi:</b>
+    <button class="btn secondary" id="exportDataBtn" style="padding:6px 12px;" data-i18n="exportBtn">Vie tiedot tiedostoon (.json)</button>
+    <button class="btn secondary" id="importDataBtnLabel" style="padding:6px 12px;" data-i18n="importBtn">Tuo tiedot tiedostosta</button>
+    <input type="file" id="importDataFile" accept="application/json" style="display:none;">
+    <span id="importMsg" class="flag"></span>
+    <small class="help" style="margin:0;" data-i18n="backupHelp">Suositus: vie varmuuskopio aina kun olet päivittänyt yritys- tai asiakastietoja, erityisesti jos avaat tämän tiedoston suoraan (file://) etkä paikallisen palvelimen kautta – selaimet eivät aina säilytä tietoja pysyvästi tiedostoina avatuilla sivuilla.</small>
+  </div>
+</div>
+
+<main>
+
+<!-- ================= SELLER TAB ================= -->
+<section id="tab-seller" class="tab-section">
+  <div class="panel">
+    <h2 data-i18n="sellerHeading">Myyjän (yrityksen) tiedot</h2>
+    <div class="grid">
+      <div>
+        <label data-i18n="l_sellerName">Yrityksen / myyjän nimi *</label>
+        <input id="s_name" placeholder="Esimerkki Oy">
+      </div>
+      <div>
+        <label data-i18n="l_ytunnus">Y-tunnus * (muoto 1234567-8)</label>
+        <input id="s_ytunnus" placeholder="1234567-8">
+        <div id="s_ytunnus_flag" class="flag"></div>
+      </div>
+      <div>
+        <label data-i18n="l_vatid">ALV-tunniste (muodostuu automaattisesti)</label>
+        <input id="s_vatid" readonly>
+      </div>
+      <div>
+        <label data-i18n="l_street">Katuosoite *</label>
+        <input id="s_street" placeholder="Esimerkkikatu 1">
+      </div>
+      <div>
+        <label data-i18n="l_zipcity">Postinumero ja -toimipaikka *</label>
+        <input id="s_zipcity" placeholder="00100 Helsinki">
+      </div>
+      <div>
+        <label data-i18n="l_country">Maa</label>
+        <input id="s_country" value="Suomi">
+      </div>
+      <div>
+        <label data-i18n="l_phone">Puhelin</label>
+        <input id="s_phone" placeholder="+358 40 123 4567">
+      </div>
+      <div>
+        <label data-i18n="l_email">Sähköposti</label>
+        <input id="s_email" placeholder="laskutus@esimerkki.fi">
+      </div>
+      <div>
+        <label data-i18n="l_web">Verkkosivu</label>
+        <input id="s_web" placeholder="www.esimerkki.fi">
+      </div>
+      <div>
+        <label data-i18n="l_iban">IBAN-tilinumero *</label>
+        <input id="s_iban" placeholder="FI21 1234 5600 0007 85">
+        <div id="s_iban_flag" class="flag"></div>
+      </div>
+      <div>
+        <label data-i18n="l_bic">BIC/SWIFT</label>
+        <input id="s_bic" placeholder="NDEAFIHH">
+      </div>
+      <div>
+        <label data-i18n="l_termdays">Maksuehto oletuksena (pv netto)</label>
+        <input id="s_termdays" type="number" value="14" min="0">
+      </div>
+      <div>
+        <label data-i18n="l_lateinterest">Viivästyskorko % p.a. (Korkolaki 4/4a §)</label>
+        <input id="s_lateinterest" type="number" step="0.1" value="10.5">
+        <small class="help" data-i18n="lateInterestHelp">Voimassa 1.7.–31.12.2026: kuluttajasaatavat 9,5 %, elinkeinonharjoittajien väliset sopimukset 10,5 % (viitekorko 2,5 % + laissa säädetty lisä). Tarkista ajantasainen viitekorko Suomen Pankin sivuilta ennen laskun lähettämistä, jos eräpäivä on kaukana tulevaisuudessa.</small>
+      </div>
+      <div>
+        <label data-i18n="l_prepay">Ennakkoperintärekisterissä</label>
+        <select id="s_prepay"><option value="yes" data-i18n="yes">Kyllä</option><option value="no" data-i18n="no">Ei</option></select>
+      </div>
+      <div>
+        <label data-i18n="l_reftype">Oletusviitetyyppi</label>
+        <select id="s_reftype">
+          <option value="national" data-i18n="refNational">Kotimainen viitenumero</option>
+          <option value="rf" data-i18n="refRF">Kansainvälinen RF-viite (ISO 11649)</option>
+        </select>
+      </div>
+      <div>
+        <label data-i18n="l_logo">Logo (valinnainen, näkyy laskulla)</label>
+        <input id="s_logofile" type="file" accept="image/*">
+        <img id="logoPreview" style="display:none;margin-top:6px;">
+      </div>
+    </div>
+    <div style="margin-top:12px;">
+      <button class="btn" id="saveSeller" data-i18n="saveSellerBtn">Tallenna yritystiedot</button>
+      <span id="sellerSavedMsg" class="flag ok"></span>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CUSTOMERS TAB ================= -->
+<section id="tab-customers" class="tab-section" style="display:none;">
+  <div class="panel">
+    <h2 data-i18n="customerFormHeading">Lisää / muokkaa asiakasta</h2>
+    <input type="hidden" id="c_editIndex" value="-1">
+    <div class="grid">
+      <div><label data-i18n="l_custName">Nimi *</label><input id="c_name"></div>
+      <div><label data-i18n="l_custYtunnus">Y-tunnus (jos yritysasiakas)</label><input id="c_ytunnus" placeholder="1234567-8"></div>
+      <div><label data-i18n="l_street">Katuosoite *</label><input id="c_street"></div>
+      <div><label data-i18n="l_zipcity">Postinumero ja -toimipaikka *</label><input id="c_zipcity"></div>
+      <div><label data-i18n="l_country">Maa</label><input id="c_country" value="Suomi"></div>
+      <div><label data-i18n="l_email">Sähköposti</label><input id="c_email"></div>
+      <div><label data-i18n="l_custnum">Asiakasnumero (valinnainen, viitteen pohjaksi)</label><input id="c_custnum" placeholder="esim. 42"></div>
+    </div>
+    <div style="margin-top:10px;">
+      <button class="btn" id="saveCustomer" data-i18n="saveCustomerBtn">Tallenna asiakas</button>
+      <button class="btn secondary" id="clearCustomerForm" data-i18n="clearBtn">Tyhjennä</button>
+    </div>
+  </div>
+  <div class="panel">
+    <h2 data-i18n="savedCustomersHeading">Tallennetut asiakkaat</h2>
+    <div id="customerList"></div>
+  </div>
+</section>
+
+<!-- ================= INVOICE TAB ================= -->
+<section id="tab-invoice" class="tab-section" style="display:none;">
+  <div class="panel">
+    <h2 data-i18n="invoiceBasicsHeading">Laskun perustiedot</h2>
+    <div class="grid">
+      <div>
+        <label data-i18n="l_customer">Asiakas</label>
+        <select id="i_customer"><option value="-1" data-i18n="chooseCustomer">— valitse tallennettu asiakas —</option></select>
+      </div>
+      <div>
+        <label data-i18n="l_invoiceNumber">Laskun numero *</label>
+        <input id="i_number">
+      </div>
+      <div>
+        <label data-i18n="l_invoiceDate">Laskun päivämäärä *</label>
+        <input id="i_date" type="date">
+      </div>
+      <div>
+        <label data-i18n="l_deliveryDate">Toimitus-/suorituspäivä (jos eri kuin laskun pvm)</label>
+        <input id="i_deliverydate" type="date">
+      </div>
+      <div>
+        <label data-i18n="l_paymentTerm">Maksuehto (pv netto)</label>
+        <input id="i_termdays" type="number" min="0">
+      </div>
+      <div>
+        <label data-i18n="l_dueDate">Eräpäivä *</label>
+        <input id="i_duedate" type="date">
+      </div>
+      <div>
+        <label data-i18n="l_refType">Viitetyyppi</label>
+        <select id="i_reftype">
+          <option value="national" data-i18n="refNational">Kotimainen viitenumero</option>
+          <option value="rf" data-i18n="refRFshort">RF-viite (ISO 11649)</option>
+        </select>
+      </div>
+      <div>
+        <label data-i18n="l_refBase">Viitteen perusnumero (esim. laskun numero)</label>
+        <input id="i_refbase">
+        <small class="help" data-i18n="refBaseHelp">Tarkistusnumero lasketaan automaattisesti.</small>
+      </div>
+      <div>
+        <label data-i18n="l_refOut">Muodostettu viitenumero</label>
+        <input id="i_refout" readonly>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2 data-i18n="linesHeading">Laskurivit</h2>
+    <table id="linesTable">
+      <thead><tr>
+        <th style="width:26%;" data-i18n="th_desc">Kuvaus *</th>
+        <th style="width:8%;" data-i18n="th_qty">Määrä</th>
+        <th style="width:8%;" data-i18n="th_unit">Yksikkö</th>
+        <th style="width:11%;" data-i18n="th_price">À-hinta veroton €</th>
+        <th style="width:8%;" data-i18n="th_discount">Alennus %</th>
+        <th style="width:9%;" data-i18n="th_vat">ALV %</th>
+        <th style="width:11%;" data-i18n="th_base">Veron peruste €</th>
+        <th style="width:9%;" data-i18n="th_vatEur">ALV €</th>
+        <th style="width:10%;" data-i18n="th_total">Yhteensä €</th>
+        <th style="width:4%;"></th>
+      </tr></thead>
+      <tbody id="linesBody"></tbody>
+    </table>
+    <button class="btn secondary" id="addLine" style="margin-top:8px;" data-i18n="addLineBtn">+ Lisää rivi</button>
+
+    <div id="zeroVatNoteWrap" style="display:none; margin-top:10px;">
+      <label data-i18n="zeroVatLabel">ALV-huomautus (pakollinen 0 %-riveillä: peruste esim. käännetty verovelvollisuus, yhteisömyynti tms.)</label>
+      <input id="zeroVatNote" placeholder="esim. Käännetty verovelvollisuus AVL 8 c §">
+    </div>
+
+    <table class="totals" id="totalsTable"></table>
+  </div>
+
+  <div class="panel">
+    <h2 data-i18n="extraHeading">Lisätiedot laskulle</h2>
+    <label data-i18n="notesLabel">Vapaa teksti / huomautukset (esim. toimitustapa, sopimusviite)</label>
+    <textarea id="i_notes"></textarea>
+  </div>
+
+  <div class="panel no-print">
+    <button class="btn" id="renderInvoice" data-i18n="renderBtn">Luo / päivitä laskun esikatselu</button>
+    <button class="btn secondary" id="printInvoice" data-i18n="printBtn">Tulosta / tallenna PDF</button>
+    <button class="btn secondary" id="bumpNumber" data-i18n="bumpBtn">Vahvista lasku &amp; kasvata juoksevaa numeroa</button>
+    <div id="renderErrors" class="note" style="display:none;"></div>
+  </div>
+
+  <div class="panel">
+    <h2 data-i18n="previewHeading">Esikatselu</h2>
+    <div id="invoiceDoc"></div>
+  </div>
+</section>
+
+<!-- ================= HELP TAB ================= -->
+<section id="tab-help" class="tab-section" style="display:none;">
+  <div class="panel" id="helpPanel">
+    <h2 data-i18n="helpHeading">Mihin tämä työkalu perustuu</h2>
+    <p data-i18n="help1">Pakolliset laskumerkinnät perustuvat arvonlisäverolain (AVL) 209 b–209 e §:ään: laskun antamispäivä, juokseva tunniste (laskun numero), myyjän ja ostajan nimi ja osoite, myyjän Y-tunnus, myytyjen tavaroiden/palvelujen määrä ja luonne, toimituspäivä jos eri kuin laskun päivämäärä, veron peruste kunkin verokannan/verottomuuden osalta, yksikköhinta veroton, mahdolliset alennukset, sovellettava ALV-kanta, suoritettavan veron määrä sekä poikkeustilanteissa (käännetty verovelvollisuus, verottomuus, marginaaliverotus, yhteisömyynti) viittaus asiaan.</p>
+    <p data-i18n="help2">ALV-kannat 1.1.2026 alkaen: yleinen 25,5 %; alennettu 13,5 % (mm. elintarvikkeet, ravintolapalvelut, kirjat, lääkkeet, hygieniasuojat, liikuntapalvelut, kulttuuri- ja urheilutapahtumat, henkilökuljetus, majoitus, esiintyvän taiteilijan palkkiot, yleisradiotoiminta); alennettu 10 % (sanoma- ja aikakauslehdet); 0 % (mm. vienti EU:n ulkopuolelle, tavaroiden yhteisömyynti).</p>
+    <p data-i18n="help3">Pankkiviivakoodi on toteutettu Finanssiala ry:n ohjeen "Bank Bar Code Guide v5.3" mukaisesti, symboliversiot 4 (kotimainen viitenumero) ja 5 (kansainvälinen RF-viite), Code 128 -merkistö C. 54-merkkinen tietosisältö on testattu virallisia esimerkkilaskuja vasten.</p>
+    <p data-i18n="help4">Viitenumeron tarkistusnumero lasketaan painokertoimilla 7-3-1 oikealta lukien (moduulilla 10). RF-viite lasketaan ISO 11649 -standardin mukaisesti (moduuli 97, kirjaimet muunnetaan numeroiksi A=10…Z=35).</p>
+    <p data-i18n="help5">Y-tunnuksen (Suomessa: FO-nummer / Business ID) tarkistusnumero lasketaan painokertoimilla 7,9,10,5,8,4,2 (moduuli 11).</p>
+    <p data-i18n="help6">Viivästyskorko perustuu korkolain (633/1982) 4 ja 4 a §:ään: kuluttajasaatavissa viitekorko + 7 %-yksikköä, elinkeinonharjoittajien välisissä sopimuksissa viitekorko + 8 %-yksikköä. Suomen Pankki vahvistaa viitekoron puolivuosittain (1.1. ja 1.7.).</p>
+    <div class="note" data-i18n="help7">
+      Tämä työkalu auttaa noudattamaan muotovaatimuksia, mutta ei korvaa kirjanpitäjän tai veroasiantuntijan neuvontaa erikoistilanteissa (esim. OSS-järjestelmä, marginaaliverotus, rakennusalan käännetty verovelvollisuus). Tallenna jokainen lähetetty lasku pysyvästi omaan kirjanpitoosi – selaimen tallennustila ei ole kirjanpitolain mukainen säilytyspaikka.
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+/* ================= I18N ================= */
+const I18N = {
+fi: {
+  appTitle:'EcoBooks Laskugeneraattori',
+  appSubtitle:'Arvonlisäverolain laskumerkinnät · Finanssialan Pankkiviivakoodi (versio 4/5) · Kotimainen ja RF-viitenumero',
+  tabSeller:'1. Yrityksen tiedot', tabCustomers:'2. Asiakkaat', tabInvoice:'3. Lasku', tabHelp:'Ohje / lainsäädäntö',
+  backupLabel:'Tietojen varmuuskopiointi:', exportBtn:'Vie tiedot tiedostoon (.json)', importBtn:'Tuo tiedot tiedostosta',
+  backupHelp:'Suositus: vie varmuuskopio aina kun olet päivittänyt yritys- tai asiakastietoja, erityisesti jos avaat tämän tiedoston suoraan (file://) etkä paikallisen palvelimen kautta – selaimet eivät aina säilytä tietoja pysyvästi tiedostoina avatuilla sivuilla.',
+  sellerHeading:'Myyjän (yrityksen) tiedot',
+  l_sellerName:'Yrityksen / myyjän nimi *', l_ytunnus:'Y-tunnus * (muoto 1234567-8)', l_vatid:'ALV-tunniste (muodostuu automaattisesti)',
+  l_street:'Katuosoite *', l_zipcity:'Postinumero ja -toimipaikka *', l_country:'Maa', l_phone:'Puhelin', l_email:'Sähköposti', l_web:'Verkkosivu',
+  l_iban:'IBAN-tilinumero *', l_bic:'BIC/SWIFT', l_termdays:'Maksuehto oletuksena (pv netto)', l_lateinterest:'Viivästyskorko % p.a. (Korkolaki 4/4a §)',
+  lateInterestHelp:'Voimassa 1.7.–31.12.2026: kuluttajasaatavat 9,5 %, elinkeinonharjoittajien väliset sopimukset 10,5 % (viitekorko 2,5 % + laissa säädetty lisä). Tarkista ajantasainen viitekorko Suomen Pankin sivuilta ennen laskun lähettämistä, jos eräpäivä on kaukana tulevaisuudessa.',
+  l_prepay:'Ennakkoperintärekisterissä', yes:'Kyllä', no:'Ei', l_reftype:'Oletusviitetyyppi', refNational:'Kotimainen viitenumero', refRF:'Kansainvälinen RF-viite (ISO 11649)', refRFshort:'RF-viite (ISO 11649)',
+  l_logo:'Logo (valinnainen, näkyy laskulla)', saveSellerBtn:'Tallenna yritystiedot', savedMsg:'Tallennettu ✓',
+  customerFormHeading:'Lisää / muokkaa asiakasta', l_custName:'Nimi *', l_custYtunnus:'Y-tunnus (jos yritysasiakas)', l_custnum:'Asiakasnumero (valinnainen, viitteen pohjaksi)',
+  saveCustomerBtn:'Tallenna asiakas', clearBtn:'Tyhjennä', savedCustomersHeading:'Tallennetut asiakkaat', noCustomers:'Ei vielä tallennettuja asiakkaita.',
+  editBtn:'Muokkaa', deleteBtn:'Poista', businessId:'Y-tunnus',
+  invoiceBasicsHeading:'Laskun perustiedot', l_customer:'Asiakas', chooseCustomer:'— valitse tallennettu asiakas —',
+  l_invoiceNumber:'Laskun numero *', l_invoiceDate:'Laskun päivämäärä *', l_deliveryDate:'Toimitus-/suorituspäivä (jos eri kuin laskun pvm)',
+  l_paymentTerm:'Maksuehto (pv netto)', l_dueDate:'Eräpäivä *', l_refType:'Viitetyyppi', l_refBase:'Viitteen perusnumero (esim. laskun numero)',
+  refBaseHelp:'Tarkistusnumero lasketaan automaattisesti.', l_refOut:'Muodostettu viitenumero',
+  linesHeading:'Laskurivit', th_desc:'Kuvaus *', th_qty:'Määrä', th_unit:'Yksikkö', th_price:'À-hinta veroton €', th_discount:'Alennus %',
+  th_vat:'ALV %', th_base:'Veron peruste €', th_vatEur:'ALV €', th_total:'Yhteensä €', addLineBtn:'+ Lisää rivi',
+  zeroVatLabel:'ALV-huomautus (pakollinen 0 %-riveillä: peruste esim. käännetty verovelvollisuus, yhteisömyynti tms.)',
+  extraHeading:'Lisätiedot laskulle', notesLabel:'Vapaa teksti / huomautukset (esim. toimitustapa, sopimusviite)',
+  renderBtn:'Luo / päivitä laskun esikatselu', printBtn:'Tulosta / tallenna PDF', bumpBtn:'Vahvista lasku & kasvata juoksevaa numeroa',
+  previewHeading:'Esikatselu',
+  helpHeading:'Mihin tämä työkalu perustuu',
+  help1:'Pakolliset laskumerkinnät perustuvat arvonlisäverolain (AVL) 209 b–209 e §:ään: laskun antamispäivä, juokseva tunniste (laskun numero), myyjän ja ostajan nimi ja osoite, myyjän Y-tunnus, myytyjen tavaroiden/palvelujen määrä ja luonne, toimituspäivä jos eri kuin laskun päivämäärä, veron peruste kunkin verokannan/verottomuuden osalta, yksikköhinta veroton, mahdolliset alennukset, sovellettava ALV-kanta, suoritettavan veron määrä sekä poikkeustilanteissa (käännetty verovelvollisuus, verottomuus, marginaaliverotus, yhteisömyynti) viittaus asiaan.',
+  help2:'ALV-kannat 1.1.2026 alkaen: yleinen 25,5 %; alennettu 13,5 % (mm. elintarvikkeet, ravintolapalvelut, kirjat, lääkkeet, hygieniasuojat, liikuntapalvelut, kulttuuri- ja urheilutapahtumat, henkilökuljetus, majoitus, esiintyvän taiteilijan palkkiot, yleisradiotoiminta); alennettu 10 % (sanoma- ja aikakauslehdet); 0 % (mm. vienti EU:n ulkopuolelle, tavaroiden yhteisömyynti).',
+  help3:'Pankkiviivakoodi on toteutettu Finanssiala ry:n ohjeen "Bank Bar Code Guide v5.3" mukaisesti, symboliversiot 4 (kotimainen viitenumero) ja 5 (kansainvälinen RF-viite), Code 128 -merkistö C. 54-merkkinen tietosisältö on testattu virallisia esimerkkilaskuja vasten.',
+  help4:'Viitenumeron tarkistusnumero lasketaan painokertoimilla 7-3-1 oikealta lukien (moduulilla 10). RF-viite lasketaan ISO 11649 -standardin mukaisesti (moduuli 97, kirjaimet muunnetaan numeroiksi A=10…Z=35).',
+  help5:'Y-tunnuksen (Suomessa: FO-nummer / Business ID) tarkistusnumero lasketaan painokertoimilla 7,9,10,5,8,4,2 (moduuli 11).',
+  help6:'Viivästyskorko perustuu korkolain (633/1982) 4 ja 4 a §:ään: kuluttajasaatavissa viitekorko + 7 %-yksikköä, elinkeinonharjoittajien välisissä sopimuksissa viitekorko + 8 %-yksikköä. Suomen Pankki vahvistaa viitekoron puolivuosittain (1.1. ja 1.7.).',
+  help7:'Tämä työkalu auttaa noudattamaan muotovaatimuksia, mutta ei korvaa kirjanpitäjän tai veroasiantuntijan neuvontaa erikoistilanteissa (esim. OSS-järjestelmä, marginaaliverotus, rakennusalan käännetty verovelvollisuus). Tallenna jokainen lähetetty lasku pysyvästi omaan kirjanpitoosi – selaimen tallennustila ei ole kirjanpitolain mukainen säilytyspaikka.',
+  storageWarning:'<b>Huomio:</b> selaimesi ei salli tietojen pysyvää tallennusta tälle tiedostolle (yleinen Chrome-rajoitus, kun sivu avataan suoraan levyltä, file://-osoitteesta). Syöttämäsi tiedot toimivat normaalisti tämän istunnon ajan, mutta katoavat kun suljet välilehden. <u>Käytä yllä olevaa "Vie tiedot tiedostoon" -painiketta ennen sulkemista</u>, ja "Tuo tiedot tiedostosta" seuraavalla kerralla palauttaaksesi tiedot.',
+  importOk:'Tiedot tuotu onnistuneesti ✓', importFail:'Tiedoston tuonti epäonnistui: tarkista että tiedosto on tämän sovelluksen vientitiedosto.',
+  errCompanyName:'Yrityksen nimi puuttuu (välilehti "Yrityksen tiedot").', errNumber:'Laskun numero puuttuu.', errDate:'Laskun päivämäärä puuttuu.', errDue:'Eräpäivä puuttuu.',
+  errChooseCustomer:'Valitse asiakas (tai lisää asiakas välilehdellä 2).', errAtLeastOneLine:'Lisää vähintään yksi laskurivi.', errZeroVat:'0 %-ALV-rivi vaatii ALV-huomautuksen (esim. käännetty verovelvollisuus / peruste).',
+  errFixTitle:'Korjattavaa:', errSellerYtunnus:'Myyjän Y-tunnus: ', errSellerIban:'Myyjän IBAN: ',
+  vat25:'25,5 % – yleinen verokanta', vat135:'13,5 % – elintarvikkeet, ravintolapalvelut, kirjat, lääkkeet, liikunta, kulttuuri, henkilökuljetus, majoitus ym.', vat10:'10 % – sanoma- ja aikakauslehdet', vat0:'0 % – veroton / käännetty verovelvollisuus / yhteisömyynti',
+  taxBase:'Veron peruste', vatLabel:'ALV', subtotal:'Veroton yhteensä', vatTotal:'ALV yhteensä', grandTotal:'Maksettava yhteensä',
+  invoiceWord:'LASKU', invNumber:'Laskun numero', invDate:'Laskun päivämäärä', deliveryDate:'Toimituspäivä', dueDate:'Eräpäivä', lateInterestRow:'Viivästyskorko',
+  sellerParty:'Myyjä', buyerParty:'Ostaja', prepayReg:' · Ennakkoperintärekisterissä',
+  vatNote:'ALV-huomautus:', extraInfo:'Lisätiedot:', paymentInfoHeading:'Maksutiedot', payee:'Saaja', ibanRow:'IBAN', bicRow:'BIC', refRow:'Viitenumero', amountRow:'Summa',
+  barcodeHeadingV4:'Pankkiviivakoodi (versio 4, kotimainen viite)', barcodeHeadingV5:'Pankkiviivakoodi (versio 5, RF-viite)',
+  barcodeTooLong:'Viitenumero on liian pitkä viivakoodikenttään (yli 20 merkkiä).', barcodeFail:'Viivakoodia ei voitu muodostaa: ',
+  legalFooter:(rate)=>`Lasku on laadittu arvonlisäverolain (AVL 209 b–209 e §) laskumerkintävaatimusten mukaisesti. Maksun viivästyessä peritään korkolain (633/1982) mukaista viivästyskorkoa ${rate} % p.a. eräpäivästä lukien. Pankkiviivakoodi noudattaa Finanssiala ry:n ohjetta "Bank Bar Code Guide" (versio 5.3).`,
+  bumpAlert:'Juokseva numero kasvatettu. Muista tallentaa/tulostaa juuri luotu lasku PDF:nä omaan kirjanpitoosi ennen kuin jatkat.',
+  custRequiredAlert:'Nimi, katuosoite ja postinumero/paikkakunta ovat pakollisia.'
+},
+sv: {
+  appTitle:'EcoBooks Fakturagenerator',
+  appSubtitle:'Faktureringskrav enligt mervärdesskattelagen · Finanssialas bankstreckkod (version 4/5) · Inhemskt och RF-referensnummer',
+  tabSeller:'1. Företagsuppgifter', tabCustomers:'2. Kunder', tabInvoice:'3. Faktura', tabHelp:'Hjälp / lagstiftning',
+  backupLabel:'Säkerhetskopiering:', exportBtn:'Exportera data till fil (.json)', importBtn:'Importera data från fil',
+  backupHelp:'Rekommendation: exportera en säkerhetskopia varje gång du uppdaterat företags- eller kunduppgifter, särskilt om du öppnar filen direkt (file://) och inte via en lokal server – webbläsare sparar inte alltid data permanent på sidor som öppnas som filer.',
+  sellerHeading:'Säljarens (företagets) uppgifter',
+  l_sellerName:'Företagets / säljarens namn *', l_ytunnus:'FO-nummer * (format 1234567-8)', l_vatid:'Momsnummer (skapas automatiskt)',
+  l_street:'Gatuadress *', l_zipcity:'Postnummer och -ort *', l_country:'Land', l_phone:'Telefon', l_email:'E-post', l_web:'Webbplats',
+  l_iban:'IBAN-kontonummer *', l_bic:'BIC/SWIFT', l_termdays:'Betalningsvillkor som standard (dagar netto)', l_lateinterest:'Dröjsmålsränta % p.a. (Räntelagen 4/4a §)',
+  lateInterestHelp:'Gäller 1.7–31.12.2026: konsumentfordringar 9,5 %, avtal mellan näringsidkare 10,5 % (referensränta 2,5 % + lagstadgat tillägg). Kontrollera aktuell referensränta hos Finlands Bank innan du skickar fakturan, om förfallodagen ligger långt fram i tiden.',
+  l_prepay:'Infört i förskottsuppbördsregistret', yes:'Ja', no:'Nej', l_reftype:'Standardreferenstyp', refNational:'Inhemskt referensnummer', refRF:'Internationell RF-referens (ISO 11649)', refRFshort:'RF-referens (ISO 11649)',
+  l_logo:'Logotyp (valfritt, syns på fakturan)', saveSellerBtn:'Spara företagsuppgifter', savedMsg:'Sparat ✓',
+  customerFormHeading:'Lägg till / redigera kund', l_custName:'Namn *', l_custYtunnus:'FO-nummer (om företagskund)', l_custnum:'Kundnummer (valfritt, grund för referens)',
+  saveCustomerBtn:'Spara kund', clearBtn:'Rensa', savedCustomersHeading:'Sparade kunder', noCustomers:'Inga sparade kunder ännu.',
+  editBtn:'Redigera', deleteBtn:'Ta bort', businessId:'FO-nummer',
+  invoiceBasicsHeading:'Grunduppgifter för fakturan', l_customer:'Kund', chooseCustomer:'— välj sparad kund —',
+  l_invoiceNumber:'Fakturanummer *', l_invoiceDate:'Fakturadatum *', l_deliveryDate:'Leverans-/utförandedatum (om annat än fakturadatum)',
+  l_paymentTerm:'Betalningsvillkor (dagar netto)', l_dueDate:'Förfallodag *', l_refType:'Referenstyp', l_refBase:'Referensens basnummer (t.ex. fakturanummer)',
+  refBaseHelp:'Kontrollsiffran beräknas automatiskt.', l_refOut:'Genererat referensnummer',
+  linesHeading:'Fakturarader', th_desc:'Beskrivning *', th_qty:'Antal', th_unit:'Enhet', th_price:'À-pris exkl. moms €', th_discount:'Rabatt %',
+  th_vat:'Moms %', th_base:'Beskattningsbar grund €', th_vatEur:'Moms €', th_total:'Totalt €', addLineBtn:'+ Lägg till rad',
+  zeroVatLabel:'Momsanmärkning (obligatorisk på 0 %-rader: grund t.ex. omvänd skattskyldighet, gemenskapsförsäljning)',
+  extraHeading:'Ytterligare information till fakturan', notesLabel:'Fritext / anmärkningar (t.ex. leveranssätt, avtalsreferens)',
+  renderBtn:'Skapa / uppdatera förhandsgranskning', printBtn:'Skriv ut / spara som PDF', bumpBtn:'Bekräfta faktura & höj löpnumret',
+  previewHeading:'Förhandsgranskning',
+  helpHeading:'Vad detta verktyg bygger på',
+  help1:'De obligatoriska fakturauppgifterna grundar sig på mervärdesskattelagen (MomsL) 209 b–209 e §: fakturans utfärdandedatum, löpnummer (fakturanummer), säljarens och köparens namn och adress, säljarens FO-nummer, de sålda varornas/tjänsternas mängd och art, leveransdatum om annat än fakturadatum, beskattningsbar grund för varje skattesats/skattefrihet, styckpris exklusive moms, eventuella rabatter, tillämplig momssats, momsbeloppet samt i särskilda situationer (omvänd skattskyldighet, skattefrihet, marginalbeskattning, gemenskapsförsäljning) en hänvisning till detta.',
+  help2:'Momssatser från 1.1.2026: allmän 25,5 %; nedsatt 13,5 % (bl.a. livsmedel, restaurangtjänster, böcker, läkemedel, hygienskydd, idrottstjänster, kultur- och idrottsevenemang, persontransport, inkvartering, uppträdande artisters arvoden, rundradioverksamhet); nedsatt 10 % (dagstidningar och tidskrifter); 0 % (bl.a. export utanför EU, gemenskapsförsäljning av varor).',
+  help3:'Bankens streckkod är implementerad enligt Finanssiala rf:s anvisning "Bank Bar Code Guide v5.3", symbolversionerna 4 (inhemskt referensnummer) och 5 (internationell RF-referens), Code 128 teckenuppsättning C. Det 54-teckens datainnehållet har testats mot officiella exempelfakturor.',
+  help4:'Referensnumrets kontrollsiffra beräknas med viktkoefficienterna 7-3-1 från höger räknat (modulo 10). RF-referensen beräknas enligt ISO 11649-standarden (modulo 97, bokstäver omvandlas till siffror A=10…Z=35).',
+  help5:'FO-numrets (Business ID) kontrollsiffra beräknas med viktkoefficienterna 7,9,10,5,8,4,2 (modulo 11).',
+  help6:'Dröjsmålsräntan grundar sig på räntelagen (633/1982) 4 och 4 a §: för konsumentfordringar referensränta + 7 procentenheter, för avtal mellan näringsidkare referensränta + 8 procentenheter. Finlands Bank fastställer referensräntan halvårsvis (1.1 och 1.7).',
+  help7:'Detta verktyg hjälper dig att uppfylla formkraven, men ersätter inte rådgivning från en bokförare eller skatteexpert i specialsituationer (t.ex. OSS-systemet, marginalbeskattning, omvänd skattskyldighet inom byggbranschen). Spara varje skickad faktura permanent i din egen bokföring – webbläsarens lagringsutrymme är inte en bokföringslagsenlig förvaringsplats.',
+  storageWarning:'<b>Obs:</b> din webbläsare tillåter inte permanent lagring av data för denna fil (en vanlig Chrome-begränsning när sidan öppnas direkt från disken, en file://-adress). Uppgifterna du matar in fungerar normalt under denna session, men försvinner när du stänger fliken. <u>Använd knappen "Exportera data till fil" ovan innan du stänger</u>, och "Importera data från fil" nästa gång för att återställa uppgifterna.',
+  importOk:'Data importerades ✓', importFail:'Import misslyckades: kontrollera att filen är en exportfil från denna app.',
+  errCompanyName:'Företagets namn saknas (fliken "Företagsuppgifter").', errNumber:'Fakturanummer saknas.', errDate:'Fakturadatum saknas.', errDue:'Förfallodag saknas.',
+  errChooseCustomer:'Välj en kund (eller lägg till en kund på flik 2).', errAtLeastOneLine:'Lägg till minst en fakturarad.', errZeroVat:'En 0 %-momsrad kräver en momsanmärkning (t.ex. omvänd skattskyldighet / grund).',
+  errFixTitle:'Att åtgärda:', errSellerYtunnus:'Säljarens FO-nummer: ', errSellerIban:'Säljarens IBAN: ',
+  vat25:'25,5 % – allmän skattesats', vat135:'13,5 % – livsmedel, restaurangtjänster, böcker, läkemedel, idrott, kultur, persontransport, inkvartering m.m.', vat10:'10 % – dagstidningar och tidskrifter', vat0:'0 % – skattefritt / omvänd skattskyldighet / gemenskapsförsäljning',
+  taxBase:'Beskattningsbar grund', vatLabel:'Moms', subtotal:'Totalt exkl. moms', vatTotal:'Moms totalt', grandTotal:'Att betala totalt',
+  invoiceWord:'FAKTURA', invNumber:'Fakturanummer', invDate:'Fakturadatum', deliveryDate:'Leveransdatum', dueDate:'Förfallodag', lateInterestRow:'Dröjsmålsränta',
+  sellerParty:'Säljare', buyerParty:'Köpare', prepayReg:' · Infört i förskottsuppbördsregistret',
+  vatNote:'Momsanmärkning:', extraInfo:'Ytterligare information:', paymentInfoHeading:'Betalningsuppgifter', payee:'Mottagare', ibanRow:'IBAN', bicRow:'BIC', refRow:'Referensnummer', amountRow:'Belopp',
+  barcodeHeadingV4:'Bankens streckkod (version 4, inhemsk referens)', barcodeHeadingV5:'Bankens streckkod (version 5, RF-referens)',
+  barcodeTooLong:'Referensnumret är för långt för streckkodsfältet (över 20 tecken).', barcodeFail:'Streckkoden kunde inte skapas: ',
+  legalFooter:(rate)=>`Fakturan är upprättad enligt mervärdesskattelagens (MomsL 209 b–209 e §) faktureringskrav. Vid försenad betalning debiteras dröjsmålsränta enligt räntelagen (633/1982) på ${rate} % p.a. räknat från förfallodagen. Bankens streckkod följer Finanssiala rf:s anvisning "Bank Bar Code Guide" (version 5.3).`,
+  bumpAlert:'Löpnumret har höjts. Kom ihåg att spara/skriva ut den nyss skapade fakturan som PDF till din egen bokföring innan du fortsätter.',
+  custRequiredAlert:'Namn, gatuadress och postnummer/ort är obligatoriska.'
+},
+en: {
+  appTitle:'EcoBooks Invoice Generator',
+  appSubtitle:'Finnish VAT Act invoice requirements · Finance Finland bank barcode (version 4/5) · Domestic and RF reference number',
+  tabSeller:'1. Company details', tabCustomers:'2. Customers', tabInvoice:'3. Invoice', tabHelp:'Help / legal basis',
+  backupLabel:'Data backup:', exportBtn:'Export data to file (.json)', importBtn:'Import data from file',
+  backupHelp:'Recommendation: export a backup every time you update company or customer details, especially if you open this file directly (file://) rather than through a local server — browsers do not always persist data reliably for pages opened as files.',
+  sellerHeading:'Seller (company) details',
+  l_sellerName:'Company / seller name *', l_ytunnus:'Business ID / Y-tunnus * (format 1234567-8)', l_vatid:'VAT number (generated automatically)',
+  l_street:'Street address *', l_zipcity:'Postal code and city *', l_country:'Country', l_phone:'Phone', l_email:'Email', l_web:'Website',
+  l_iban:'IBAN account number *', l_bic:'BIC/SWIFT', l_termdays:'Default payment term (days net)', l_lateinterest:'Late payment interest % p.a. (Interest Act 4/4a §)',
+  lateInterestHelp:'In force 1 Jul–31 Dec 2026: consumer debts 9.5%, agreements between businesses 10.5% (reference rate 2.5% + statutory margin). Check the current reference rate on the Bank of Finland website before invoicing if the due date is far in the future.',
+  l_prepay:'Registered in the advance collection register', yes:'Yes', no:'No', l_reftype:'Default reference type', refNational:'Domestic (Finnish) reference number', refRF:'International RF reference (ISO 11649)', refRFshort:'RF reference (ISO 11649)',
+  l_logo:'Logo (optional, shown on the invoice)', saveSellerBtn:'Save company details', savedMsg:'Saved ✓',
+  customerFormHeading:'Add / edit customer', l_custName:'Name *', l_custYtunnus:'Business ID (if a business customer)', l_custnum:'Customer number (optional, used as reference basis)',
+  saveCustomerBtn:'Save customer', clearBtn:'Clear', savedCustomersHeading:'Saved customers', noCustomers:'No saved customers yet.',
+  editBtn:'Edit', deleteBtn:'Delete', businessId:'Business ID',
+  invoiceBasicsHeading:'Invoice basics', l_customer:'Customer', chooseCustomer:'— choose a saved customer —',
+  l_invoiceNumber:'Invoice number *', l_invoiceDate:'Invoice date *', l_deliveryDate:'Delivery/performance date (if different from invoice date)',
+  l_paymentTerm:'Payment term (days net)', l_dueDate:'Due date *', l_refType:'Reference type', l_refBase:'Reference base number (e.g. invoice number)',
+  refBaseHelp:'The check digit is calculated automatically.', l_refOut:'Generated reference number',
+  linesHeading:'Invoice lines', th_desc:'Description *', th_qty:'Qty', th_unit:'Unit', th_price:'Unit price excl. VAT €', th_discount:'Discount %',
+  th_vat:'VAT %', th_base:'Tax base €', th_vatEur:'VAT €', th_total:'Total €', addLineBtn:'+ Add line',
+  zeroVatLabel:'VAT note (required on 0% lines: basis, e.g. reverse charge, intra-EU supply)',
+  extraHeading:'Additional invoice information', notesLabel:'Free text / remarks (e.g. delivery method, contract reference)',
+  renderBtn:'Create / update preview', printBtn:'Print / save as PDF', bumpBtn:'Confirm invoice & increment running number',
+  previewHeading:'Preview',
+  helpHeading:'What this tool is based on',
+  help1:'The mandatory invoice details are based on sections 209b–209e of the Finnish VAT Act: invoice issue date, sequential identifier (invoice number), seller and buyer name and address, seller\'s Business ID, quantity and nature of the goods/services sold, delivery date if different from the invoice date, the tax base for each VAT rate/exemption, unit price excluding VAT, any discounts, the applicable VAT rate, the VAT amount payable, and in special situations (reverse charge, VAT exemption, margin scheme, intra-EU supply) a reference to that provision.',
+  help2:'VAT rates from 1 Jan 2026: standard 25.5%; reduced 13.5% (incl. food, restaurant services, books, medicines, hygiene products, sports services, cultural and sporting event tickets, passenger transport, accommodation, performing artists\' fees, broadcasting); reduced 10% (newspapers and periodicals); 0% (incl. exports outside the EU, intra-EU supply of goods).',
+  help3:'The bank barcode is implemented per Finance Finland\'s "Bank Bar Code Guide v5.3", symbol versions 4 (domestic reference number) and 5 (international RF reference), Code 128 character set C. The 54-character data string has been tested against the official example invoices.',
+  help4:'The reference number check digit is calculated using weights 7-3-1 from the right (modulus 10). The RF reference is calculated per the ISO 11649 standard (modulus 97, letters converted to numbers A=10…Z=35).',
+  help5:'The Business ID (Y-tunnus) check digit is calculated using weights 7,9,10,5,8,4,2 (modulus 11).',
+  help6:'Late payment interest is based on sections 4 and 4a of the Finnish Interest Act (633/1982): reference rate + 7 percentage points for consumer debts, reference rate + 8 percentage points for agreements between businesses. The Bank of Finland confirms the reference rate twice a year (1 Jan and 1 Jul).',
+  help7:'This tool helps you meet the formal requirements, but it does not replace advice from an accountant or tax specialist in special situations (e.g. the OSS scheme, margin taxation, reverse charge in construction). Keep a permanent copy of every invoice you send in your own bookkeeping — browser storage is not a bookkeeping-law-compliant place to store records.',
+  storageWarning:'<b>Note:</b> your browser does not allow permanent storage of data for this file (a common Chrome restriction when a page is opened directly from disk, a file:// address). Data you enter will work normally for this session but will disappear when you close the tab. <u>Use the "Export data to file" button above before closing</u>, and "Import data from file" next time to restore it.',
+  importOk:'Data imported successfully ✓', importFail:'Import failed: check that the file is an export file from this app.',
+  errCompanyName:'Company name is missing (tab "Company details").', errNumber:'Invoice number is missing.', errDate:'Invoice date is missing.', errDue:'Due date is missing.',
+  errChooseCustomer:'Choose a customer (or add one on tab 2).', errAtLeastOneLine:'Add at least one invoice line.', errZeroVat:'A 0% VAT line requires a VAT note (e.g. reverse charge / basis).',
+  errFixTitle:'Please fix:', errSellerYtunnus:'Seller Business ID: ', errSellerIban:'Seller IBAN: ',
+  vat25:'25.5% – standard rate', vat135:'13.5% – food, restaurant services, books, medicines, sports, culture, passenger transport, accommodation etc.', vat10:'10% – newspapers and periodicals', vat0:'0% – zero-rated / reverse charge / intra-EU supply',
+  taxBase:'Tax base', vatLabel:'VAT', subtotal:'Subtotal excl. VAT', vatTotal:'VAT total', grandTotal:'Total payable',
+  invoiceWord:'INVOICE', invNumber:'Invoice number', invDate:'Invoice date', deliveryDate:'Delivery date', dueDate:'Due date', lateInterestRow:'Late payment interest',
+  sellerParty:'Seller', buyerParty:'Buyer', prepayReg:' · Registered in the advance collection register',
+  vatNote:'VAT note:', extraInfo:'Additional information:', paymentInfoHeading:'Payment details', payee:'Payee', ibanRow:'IBAN', bicRow:'BIC', refRow:'Reference number', amountRow:'Amount',
+  barcodeHeadingV4:'Bank barcode (version 4, domestic reference)', barcodeHeadingV5:'Bank barcode (version 5, RF reference)',
+  barcodeTooLong:'The reference number is too long for the barcode field (over 20 characters).', barcodeFail:'The barcode could not be generated: ',
+  legalFooter:(rate)=>`This invoice has been prepared in accordance with the invoicing requirements of the Finnish VAT Act (sections 209b–209e). Late payment interest of ${rate}% p.a. under the Finnish Interest Act (633/1982) applies from the due date. The bank barcode follows Finance Finland's "Bank Bar Code Guide" (version 5.3).`,
+  bumpAlert:'Running number incremented. Remember to save/print the invoice you just created as a PDF into your own bookkeeping before continuing.',
+  custRequiredAlert:'Name, street address and postal code/city are required.'
+}
+};
+let LANG = 'fi';
+function t(key){ const v = (I18N[LANG]||I18N.fi)[key]; return v===undefined? key : v; }
+function applyLang(lang){
+  LANG = lang;
+  document.documentElement.lang = lang;
+  document.title = t('appTitle');
+  document.querySelectorAll('[data-lang]').forEach(b=> b.classList.toggle('active', b.dataset.lang===lang));
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const key = el.dataset.i18n;
+    const val = t(key);
+    if(el.tagName==='INPUT' || el.tagName==='TEXTAREA'){ el.placeholder = val; }
+    else { el.innerHTML = val; }
+  });
+  LS.set('lang', lang);
+}
+document.querySelectorAll('[data-lang]').forEach(btn=>{
+  btn.addEventListener('click', ()=> applyLang(btn.dataset.lang));
+});
+
+/* ---------------- storage helpers ---------------- */
+// Some browsers (notably Chrome) disable window.localStorage entirely for
+// pages opened directly from disk (file:// URLs), throwing a SecurityError.
+// We detect that up front and fall back to an in-memory store for the
+// current session, while always pushing users toward the export/import
+// backup buttons so their data survives closing the tab.
+const _memoryStore = {};
+function _storageWorks(){
+  try{
+    localStorage.setItem('fiInvoiceApp_test', '1');
+    localStorage.removeItem('fiInvoiceApp_test');
+    return true;
+  }catch(e){ return false; }
+}
+const STORAGE_OK = _storageWorks();
+
+const LS = {
+  get(key, fallback){
+    if(STORAGE_OK){
+      try{ const v = localStorage.getItem('fiInvoiceApp_'+key); return v!=null? JSON.parse(v): fallback; }
+      catch(e){ return fallback; }
+    }
+    return (key in _memoryStore) ? _memoryStore[key] : fallback;
+  },
+  set(key, val){
+    _memoryStore[key] = val; // always keep an in-memory copy so the app works within the session regardless
+    if(STORAGE_OK){
+      try{ localStorage.setItem('fiInvoiceApp_'+key, JSON.stringify(val)); }catch(e){ /* ignore, memory copy still holds */ }
+    }
+  },
+  allKeys(){ return ['seller','customers','counters','invoices']; }
+};
+const $ = id => document.getElementById(id);
+const fmt2 = n => (Math.round(n*100)/100).toFixed(2);
+
+/* ---------------- export / import (backup) ---------------- */
+function exportAllData(){
+  const data = {};
+  LS.allKeys().forEach(k=> data[k] = LS.get(k, null));
+  data._exportedAt = new Date().toISOString();
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+  a.href = url; a.download = 'lasku-varmuuskopio-'+stamp+'.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=> URL.revokeObjectURL(url), 2000);
+}
+function importAllData(file){
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const data = JSON.parse(reader.result);
+      LS.allKeys().forEach(k=>{ if(data[k]!==undefined && data[k]!==null) LS.set(k, data[k]); });
+      loadSeller();
+      renderCustomerList();
+      populateCustomerSelect();
+      populateInvoiceDefaults();
+      $('importMsg').textContent = t('importOk');
+      $('importMsg').className = 'flag ok';
+    }catch(e){
+      $('importMsg').textContent = t('importFail');
+      $('importMsg').className = 'flag err';
+    }
+  };
+  reader.readAsText(file);
+}
+$('exportDataBtn').addEventListener('click', exportAllData);
+$('importDataBtnLabel').addEventListener('click', ()=> $('importDataFile').click());
+$('importDataFile').addEventListener('change', e=>{
+  const f = e.target.files[0]; if(f) importAllData(f);
+});
+if(!STORAGE_OK){
+  const b = $('storageBanner');
+  b.style.display='block';
+  b.innerHTML = t('storageWarning');
+}
+
+/* ---------------- tabs ---------------- */
+document.querySelectorAll('nav.tabs button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.tab-section').forEach(s=>s.style.display='none');
+    $('tab-'+btn.dataset.tab).style.display='block';
+  });
+});
+
+/* ================= Y-TUNNUS ================= */
+function ytunnusCheckDigit(d){ // d: array of 7 ints
+  const w=[7,9,10,5,8,4,2];
+  let sum=0; for(let i=0;i<7;i++) sum += d[i]*w[i];
+  const rem = sum % 11;
+  if(rem===0) return 0;
+  if(rem===1) return null;
+  return 11-rem;
+}
+function validateYtunnus(str){
+  const m = /^(\d{7})-(\d)$/.exec((str||'').trim());
+  if(!m) return {valid:false, reason:'Muoto tulee olla 1234567-8'};
+  const digits = m[1].split('').map(Number);
+  const check = ytunnusCheckDigit(digits);
+  if(check===null) return {valid:false, reason:'Tarkistusnumeroa ei voida muodostaa näistä numeroista'};
+  if(check !== Number(m[2])) return {valid:false, reason:'Tarkistusnumero ei täsmää (pitäisi olla '+check+')'};
+  return {valid:true};
+}
+
+/* ================= IBAN ================= */
+function ibanRemainder(iban){
+  const rearr = iban.slice(4)+iban.slice(0,4);
+  let numeric='';
+  for(const ch of rearr){
+    if(/[0-9]/.test(ch)) numeric+=ch;
+    else numeric += (ch.toUpperCase().charCodeAt(0)-55).toString();
+  }
+  let rem=0;
+  for(const d of numeric) rem = (rem*10 + parseInt(d,10)) % 97;
+  return rem;
+}
+function validateFinnishIban(raw){
+  const iban = (raw||'').replace(/\s+/g,'').toUpperCase();
+  if(!/^FI\d{16}$/.test(iban)) return {valid:false, reason:'Suomalainen IBAN: FI + 16 numeroa', iban};
+  const ok = ibanRemainder(iban) === 1;
+  return {valid: ok, reason: ok? '': 'IBAN-tarkiste ei täsmää', iban};
+}
+
+/* ================= Finnish national reference number ================= */
+function finnishRefCheckDigit(baseDigits){
+  const w=[7,3,1];
+  const digits = baseDigits.split('').reverse();
+  let sum=0;
+  for(let i=0;i<digits.length;i++) sum += parseInt(digits[i],10)*w[i%3];
+  return (10 - (sum % 10)) % 10;
+}
+function generateNationalReference(base){
+  const clean = (base||'').replace(/\D/g,'').replace(/^0+/,'') || '0';
+  const check = finnishRefCheckDigit(clean);
+  return clean + String(check);
+}
+
+/* ================= RF reference (ISO 11649) ================= */
+function rfCheckDigits(baseAlnum){
+  const rearranged = (baseAlnum+'RF00').toUpperCase();
+  let numeric='';
+  for(const ch of rearranged){
+    if(/[0-9]/.test(ch)) numeric+=ch;
+    else numeric += (ch.charCodeAt(0)-55).toString();
+  }
+  let rem=0;
+  for(const d of numeric) rem = (rem*10+parseInt(d,10))%97;
+  const check = 98-rem;
+  return String(check).padStart(2,'0');
+}
+function generateRFReference(base){
+  const clean = (base||'').replace(/[^0-9A-Za-z]/g,'').replace(/^0+/,'') || '0';
+  const check = rfCheckDigits(clean);
+  return 'RF'+check+clean;
+}
+
+/* ================= Bank Bar Code (Pankkiviivakoodi v4 / v5) ================= */
+function bankBarcodeV4({ibanNumeric16, totalCents, referenceDigits, dueYYMMDD}){
+  let euros = Math.floor(totalCents/100), cents = totalCents%100;
+  if(totalCents > 99999999){ euros=0; cents=0; } // per spec: too-large amounts -> zero fields
+  const eurosStr = String(euros).padStart(6,'0');
+  const centsStr = String(cents).padStart(2,'0');
+  const refStr = referenceDigits.padStart(20,'0').slice(-20);
+  const due = dueYYMMDD || '000000';
+  return '4'+ibanNumeric16+eurosStr+centsStr+'000'+refStr+due;
+}
+function bankBarcodeV5({ibanNumeric16, totalCents, rfReference, dueYYMMDD}){
+  let euros = Math.floor(totalCents/100), cents = totalCents%100;
+  if(totalCents > 99999999){ euros=0; cents=0; }
+  const eurosStr = String(euros).padStart(6,'0');
+  const centsStr = String(cents).padStart(2,'0');
+  const checkDigits = rfReference.slice(2,4);
+  const baseRef = rfReference.slice(4);
+  const rfField = checkDigits + baseRef.padStart(21,'0').slice(-21);
+  const due = dueYYMMDD || '000000';
+  return '5'+ibanNumeric16+eurosStr+centsStr+rfField+due;
+}
+
+/* ================= VAT rates ================= */
+function vatRates(){
+  return [
+    {v:25.5, key:'vat25'},
+    {v:13.5, key:'vat135'},
+    {v:10, key:'vat10'},
+    {v:0, key:'vat0'}
+  ];
+}
+
+/* ================= SELLER ================= */
+function loadSeller(){
+  const s = LS.get('seller', {});
+  $('s_name').value = s.name||'';
+  $('s_ytunnus').value = s.ytunnus||'';
+  $('s_street').value = s.street||'';
+  $('s_zipcity').value = s.zipcity||'';
+  $('s_country').value = s.country||'Suomi';
+  $('s_phone').value = s.phone||'';
+  $('s_email').value = s.email||'';
+  $('s_web').value = s.web||'';
+  $('s_iban').value = s.iban||'';
+  $('s_bic').value = s.bic||'';
+  $('s_termdays').value = s.termdays!=null? s.termdays:14;
+  $('s_lateinterest').value = s.lateinterest!=null? s.lateinterest:10.5;
+  $('s_prepay').value = s.prepay||'yes';
+  $('s_reftype').value = s.reftype||'national';
+  if(s.logo){ $('logoPreview').src=s.logo; $('logoPreview').style.display='block'; }
+  updateVatIdField();
+  validateSellerFields();
+}
+function updateVatIdField(){
+  const yt = $('s_ytunnus').value.trim();
+  const m = /^(\d{7})-(\d)$/.exec(yt);
+  $('s_vatid').value = m? ('FI'+m[1]+m[2]) : '';
+}
+function validateSellerFields(){
+  const yv = validateYtunnus($('s_ytunnus').value);
+  $('s_ytunnus_flag').textContent = $('s_ytunnus').value? (yv.valid? '✓':'✗ '+yv.reason) : '';
+  $('s_ytunnus_flag').className = 'flag '+(yv.valid?'ok':'err');
+  const iv = validateFinnishIban($('s_iban').value);
+  $('s_iban_flag').textContent = $('s_iban').value? (iv.valid? '✓':'✗ '+iv.reason) : '';
+  $('s_iban_flag').className = 'flag '+(iv.valid?'ok':'err');
+}
+['s_ytunnus','s_iban'].forEach(id=> $(id).addEventListener('input', validateSellerFields));
+$('s_ytunnus').addEventListener('input', updateVatIdField);
+$('s_logofile').addEventListener('change', e=>{
+  const f = e.target.files[0]; if(!f) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{ $('logoPreview').src = reader.result; $('logoPreview').style.display='block'; };
+  reader.readAsDataURL(f);
+});
+$('saveSeller').addEventListener('click', ()=>{
+  const s = {
+    name: $('s_name').value.trim(), ytunnus: $('s_ytunnus').value.trim(),
+    street: $('s_street').value.trim(), zipcity: $('s_zipcity').value.trim(), country: $('s_country').value.trim(),
+    phone: $('s_phone').value.trim(), email: $('s_email').value.trim(), web: $('s_web').value.trim(),
+    iban: $('s_iban').value.trim(), bic: $('s_bic').value.trim(),
+    termdays: Number($('s_termdays').value||14), lateinterest: Number($('s_lateinterest').value||10.5),
+    prepay: $('s_prepay').value, reftype: $('s_reftype').value,
+    logo: $('logoPreview').style.display==='block'? $('logoPreview').src : ''
+  };
+  LS.set('seller', s);
+  $('sellerSavedMsg').textContent = t('savedMsg');
+  setTimeout(()=> $('sellerSavedMsg').textContent='', 2500);
+  populateInvoiceDefaults();
+});
+
+/* ================= CUSTOMERS ================= */
+function loadCustomers(){ return LS.get('customers', []); }
+function saveCustomers(list){ LS.set('customers', list); renderCustomerList(); populateCustomerSelect(); }
+function renderCustomerList(){
+  const list = loadCustomers();
+  const wrap = $('customerList');
+  wrap.innerHTML = list.length? '' : '<p class="meta">'+t('noCustomers')+'</p>';
+  list.forEach((c,i)=>{
+    const div = document.createElement('div');
+    div.className='list-row';
+    div.innerHTML = `<div><b>${c.name}</b><div class="meta">${c.street}, ${c.zipcity} ${c.country||''} ${c.ytunnus? ' · '+t('businessId')+' '+c.ytunnus:''}</div></div>
+      <div class="row-actions"><button class="btn secondary" data-edit="${i}">${t('editBtn')}</button><button class="btn danger" data-del="${i}">${t('deleteBtn')}</button></div>`;
+    wrap.appendChild(div);
+  });
+  wrap.querySelectorAll('[data-edit]').forEach(b=> b.addEventListener('click', ()=> editCustomer(Number(b.dataset.edit))));
+  wrap.querySelectorAll('[data-del]').forEach(b=> b.addEventListener('click', ()=>{
+    const list = loadCustomers(); list.splice(Number(b.dataset.del),1); saveCustomers(list);
+  }));
+}
+function editCustomer(i){
+  const c = loadCustomers()[i];
+  $('c_editIndex').value = i;
+  $('c_name').value=c.name; $('c_ytunnus').value=c.ytunnus||''; $('c_street').value=c.street;
+  $('c_zipcity').value=c.zipcity; $('c_country').value=c.country||'Suomi'; $('c_email').value=c.email||''; $('c_custnum').value=c.custnum||'';
+  document.querySelector('[data-tab="customers"]').click();
+}
+$('saveCustomer').addEventListener('click', ()=>{
+  const c = {
+    name: $('c_name').value.trim(), ytunnus: $('c_ytunnus').value.trim(), street: $('c_street').value.trim(),
+    zipcity: $('c_zipcity').value.trim(), country: $('c_country').value.trim(), email: $('c_email').value.trim(),
+    custnum: $('c_custnum').value.trim()
+  };
+  if(!c.name || !c.street || !c.zipcity){ alert(t('custRequiredAlert')); return; }
+  const list = loadCustomers();
+  const idx = Number($('c_editIndex').value);
+  if(idx>=0) list[idx]=c; else list.push(c);
+  saveCustomers(list);
+  clearCustomerForm();
+});
+function clearCustomerForm(){
+  $('c_editIndex').value=-1;
+  ['c_name','c_ytunnus','c_street','c_zipcity','c_email','c_custnum'].forEach(id=> $(id).value='');
+  $('c_country').value='Suomi';
+}
+$('clearCustomerForm').addEventListener('click', clearCustomerForm);
+function populateCustomerSelect(){
+  const sel = $('i_customer');
+  const list = loadCustomers();
+  sel.innerHTML = '<option value="-1">'+t('chooseCustomer')+'</option>' +
+    list.map((c,i)=> `<option value="${i}">${c.name}</option>`).join('');
+}
+
+/* ================= INVOICE NUMBER COUNTER ================= */
+function nextInvoiceNumber(){
+  const year = new Date().getFullYear();
+  const counters = LS.get('counters', {});
+  const cur = counters[year] || 0;
+  return {display: year+'-'+String(cur+1).padStart(3,'0'), year, seq: cur+1};
+}
+function bumpInvoiceCounter(year){
+  const counters = LS.get('counters', {});
+  counters[year] = (counters[year]||0)+1;
+  LS.set('counters', counters);
+}
+
+/* ================= INVOICE LINES ================= */
+function addLineRow(data){
+  data = data || {desc:'', qty:1, unit:'kpl', price:0, discount:0, vat:25.5};
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input class="ln-desc" value="${data.desc}"></td>
+    <td><input class="ln-qty" type="number" step="0.01" value="${data.qty}"></td>
+    <td><input class="ln-unit" value="${data.unit}"></td>
+    <td><input class="ln-price" type="number" step="0.01" value="${data.price}"></td>
+    <td><input class="ln-discount" type="number" step="0.1" value="${data.discount}"></td>
+    <td><select class="ln-vat">${vatRates().map(r=>`<option value="${r.v}" ${r.v===data.vat?'selected':''}>${r.v}%</option>`).join('')}</select></td>
+    <td class="ln-base">0.00</td>
+    <td class="ln-vatamount">0.00</td>
+    <td class="ln-total">0.00</td>
+    <td><button class="btn danger" style="padding:4px 8px;">×</button></td>
+  `;
+  tr.querySelectorAll('input,select').forEach(el=> el.addEventListener('input', recalcTotals));
+  tr.querySelector('button').addEventListener('click', ()=>{ tr.remove(); recalcTotals(); });
+  $('linesBody').appendChild(tr);
+}
+$('addLine').addEventListener('click', ()=> addLineRow());
+
+function recalcTotals(){
+  const rows = [...$('linesBody').querySelectorAll('tr')];
+  const byRate = {};
+  let grandBase=0, grandVat=0, grandTotal=0, hasZero=false;
+  rows.forEach(tr=>{
+    const qty = parseFloat(tr.querySelector('.ln-qty').value)||0;
+    const price = parseFloat(tr.querySelector('.ln-price').value)||0;
+    const discount = parseFloat(tr.querySelector('.ln-discount').value)||0;
+    const vatRate = parseFloat(tr.querySelector('.ln-vat').value)||0;
+    const gross = qty*price*(1-discount/100);
+    const base = gross;
+    const vatAmt = base*vatRate/100;
+    const total = base+vatAmt;
+    tr.querySelector('.ln-base').textContent = fmt2(base);
+    tr.querySelector('.ln-vatamount').textContent = fmt2(vatAmt);
+    tr.querySelector('.ln-total').textContent = fmt2(total);
+    byRate[vatRate] = byRate[vatRate] || {base:0, vat:0};
+    byRate[vatRate].base += base; byRate[vatRate].vat += vatAmt;
+    grandBase+=base; grandVat+=vatAmt; grandTotal+=total;
+    if(vatRate===0) hasZero=true;
+  });
+  $('zeroVatNoteWrap').style.display = hasZero? 'block':'none';
+  const totalsTable = $('totalsTable');
+  let html='';
+  Object.keys(byRate).sort((a,b)=>b-a).forEach(rate=>{
+    html += `<tr><td>${t('taxBase')} ${rate} %</td><td style="text-align:right;">${fmt2(byRate[rate].base)} €</td></tr>`;
+    html += `<tr><td>${t('vatLabel')} ${rate} %</td><td style="text-align:right;">${fmt2(byRate[rate].vat)} €</td></tr>`;
+  });
+  html += `<tr><td>${t('subtotal')}</td><td style="text-align:right;">${fmt2(grandBase)} €</td></tr>`;
+  html += `<tr><td>${t('vatTotal')}</td><td style="text-align:right;">${fmt2(grandVat)} €</td></tr>`;
+  html += `<tr class="grand"><td>${t('grandTotal')}</td><td style="text-align:right;">${fmt2(grandTotal)} €</td></tr>`;
+  totalsTable.innerHTML = html;
+  return {byRate, grandBase, grandVat, grandTotal};
+}
+
+/* ================= invoice defaults / reference wiring ================= */
+function populateInvoiceDefaults(){
+  const s = LS.get('seller', {});
+  const n = nextInvoiceNumber();
+  if(!$('i_number').value) $('i_number').value = n.display;
+  if(!$('i_date').value) $('i_date').value = new Date().toISOString().slice(0,10);
+  if(!$('i_termdays').value) $('i_termdays').value = s.termdays!=null? s.termdays:14;
+  $('i_reftype').value = s.reftype||'national';
+  if(!$('i_refbase').value) $('i_refbase').value = $('i_number').value.replace(/\D/g,'');
+  recalcDueDate();
+  recalcReference();
+}
+function recalcDueDate(){
+  const d = $('i_date').value; const days = Number($('i_termdays').value||0);
+  if(!d) return;
+  const dt = new Date(d+'T00:00:00'); dt.setDate(dt.getDate()+days);
+  $('i_duedate').value = dt.toISOString().slice(0,10);
+}
+function recalcReference(){
+  const base = $('i_refbase').value || $('i_number').value.replace(/\D/g,'') || '1';
+  if($('i_reftype').value==='rf'){
+    $('i_refout').value = generateRFReference(base);
+  } else {
+    $('i_refout').value = generateNationalReference(base);
+  }
+}
+['i_date','i_termdays'].forEach(id=> $(id).addEventListener('input', recalcDueDate));
+['i_refbase','i_reftype','i_number'].forEach(id=> $(id).addEventListener('input', recalcReference));
+$('i_customer').addEventListener('change', ()=>{
+  const idx = Number($('i_customer').value);
+  if(idx>=0){
+    const c = loadCustomers()[idx];
+    if(c.custnum) { $('i_refbase').value = c.custnum + $('i_number').value.replace(/\D/g,''); recalcReference(); }
+  }
+});
+
+/* ================= RENDER INVOICE ================= */
+function dateFi(d){ if(!d) return ''; const [y,m,day]=d.split('-'); return day+'.'+m+'.'+y; }
+function dateYYMMDD(d){ if(!d) return '000000'; const [y,m,day]=d.split('-'); return y.slice(2)+m+day; }
+
+$('renderInvoice').addEventListener('click', ()=>{
+  const errors = [];
+  const s = LS.get('seller', {});
+  if(!s.name) errors.push(t('errCompanyName'));
+  const yv = validateYtunnus(s.ytunnus||''); if(!yv.valid) errors.push(t('errSellerYtunnus')+yv.reason);
+  const iv = validateFinnishIban(s.iban||''); if(!iv.valid) errors.push(t('errSellerIban')+iv.reason);
+  if(!$('i_number').value) errors.push(t('errNumber'));
+  if(!$('i_date').value) errors.push(t('errDate'));
+  if(!$('i_duedate').value) errors.push(t('errDue'));
+
+  let customer = null;
+  const idx = Number($('i_customer').value);
+  if(idx>=0) customer = loadCustomers()[idx];
+  else {
+    errors.push(t('errChooseCustomer'));
+  }
+
+  const rows = [...$('linesBody').querySelectorAll('tr')];
+  if(rows.length===0) errors.push(t('errAtLeastOneLine'));
+  const hasZero = [...rows].some(tr=> parseFloat(tr.querySelector('.ln-vat').value)===0);
+  if(hasZero && !$('zeroVatNote').value.trim()) errors.push(t('errZeroVat'));
+
+  if(errors.length){
+    $('renderErrors').style.display='block';
+    $('renderErrors').innerHTML = '<b>'+t('errFixTitle')+'</b><ul>'+errors.map(e=>'<li>'+e+'</li>').join('')+'</ul>';
+    return;
+  }
+  $('renderErrors').style.display='none';
+
+  const totals = recalcTotals();
+  const totalCents = Math.round(totals.grandTotal*100);
+
+  const linesHtml = rows.map(tr=>{
+    const desc = tr.querySelector('.ln-desc').value;
+    const qty = tr.querySelector('.ln-qty').value;
+    const unit = tr.querySelector('.ln-unit').value;
+    const price = parseFloat(tr.querySelector('.ln-price').value)||0;
+    const discount = parseFloat(tr.querySelector('.ln-discount').value)||0;
+    const vat = tr.querySelector('.ln-vat').value;
+    const base = tr.querySelector('.ln-base').textContent;
+    const vatAmt = tr.querySelector('.ln-vatamount').textContent;
+    const total = tr.querySelector('.ln-total').textContent;
+    return `<tr><td>${desc}</td><td>${qty} ${unit}</td><td>${fmt2(price)} €</td><td>${discount||0} %</td><td>${vat} %</td><td>${base} €</td><td>${vatAmt} €</td><td>${total} €</td></tr>`;
+  }).join('');
+
+  let totalsRowsHtml='';
+  Object.keys(totals.byRate).sort((a,b)=>b-a).forEach(rate=>{
+    totalsRowsHtml += `<tr><td>${t('taxBase')} ${rate} %</td><td style="text-align:right;">${fmt2(totals.byRate[rate].base)} €</td></tr>`;
+    totalsRowsHtml += `<tr><td>${t('vatLabel')} ${rate} %</td><td style="text-align:right;">${fmt2(totals.byRate[rate].vat)} €</td></tr>`;
+  });
+
+  const reftype = $('i_reftype').value;
+  const refout = $('i_refout').value;
+  const ibanNumeric = iv.iban.slice(2);
+  const dueYYMMDD = dateYYMMDD($('i_duedate').value);
+  let barcodeData = '';
+  let barcodeOk = true, barcodeMsg='';
+  if(reftype==='rf'){
+    barcodeData = bankBarcodeV5({ibanNumeric16: ibanNumeric, totalCents, rfReference: refout, dueYYMMDD});
+  } else {
+    if(refout.replace(/\D/g,'').length > 20){ barcodeOk=false; barcodeMsg=t('barcodeTooLong'); }
+    barcodeData = bankBarcodeV4({ibanNumeric16: ibanNumeric, totalCents, referenceDigits: refout, dueYYMMDD});
+  }
+
+  const zeroNote = $('zeroVatNote').value.trim();
+
+  const doc = `
+    <div class="idHead">
+      <div>
+        ${s.logo? `<img src="${s.logo}" style="max-height:56px;max-width:200px;display:block;margin-bottom:8px;">`:''}
+        <h1>${s.name}</h1>
+        <div>${s.street}<br>${s.zipcity}<br>${s.country||''}</div>
+        <div>${t('businessId')}: ${s.ytunnus}${s.prepay==='yes'? t('prepayReg'):''}</div>
+        <div>${s.phone||''} ${s.email? ' · '+s.email:''} ${s.web? ' · '+s.web:''}</div>
+      </div>
+      <div style="text-align:right;">
+        <h1>${t('invoiceWord')}</h1>
+        <table class="meta-table" style="margin-left:auto;">
+          <tr><td>${t('invNumber')}</td><td><b>${$('i_number').value}</b></td></tr>
+          <tr><td>${t('invDate')}</td><td>${dateFi($('i_date').value)}</td></tr>
+          ${$('i_deliverydate').value? `<tr><td>${t('deliveryDate')}</td><td>${dateFi($('i_deliverydate').value)}</td></tr>`:''}
+          <tr><td>${t('dueDate')}</td><td>${dateFi($('i_duedate').value)}</td></tr>
+          <tr><td>${t('lateInterestRow')}</td><td>${s.lateinterest} % p.a.</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="partyBlocks">
+      <div class="block">
+        <h3>${t('sellerParty')}</h3>
+        ${s.name}<br>${s.street}<br>${s.zipcity}<br>${s.country||''}
+      </div>
+      <div class="block">
+        <h3>${t('buyerParty')}</h3>
+        ${customer.name}${customer.ytunnus? ' ('+t('businessId')+' '+customer.ytunnus+')':''}<br>${customer.street}<br>${customer.zipcity}<br>${customer.country||''}
+      </div>
+    </div>
+
+    <table class="lines">
+      <thead><tr><th>${t('th_desc')}</th><th>${t('th_qty')}</th><th>${t('th_price')}</th><th>${t('th_discount')}</th><th>${t('th_vat')}</th><th>${t('th_base')}</th><th>${t('th_vatEur')}</th><th>${t('th_total')}</th></tr></thead>
+      <tbody>${linesHtml}</tbody>
+    </table>
+
+    <table class="totals">${totalsRowsHtml}
+      <tr><td>${t('subtotal')}</td><td style="text-align:right;">${fmt2(totals.grandBase)} €</td></tr>
+      <tr><td>${t('vatTotal')}</td><td style="text-align:right;">${fmt2(totals.grandVat)} €</td></tr>
+      <tr class="grand"><td>${t('grandTotal')}</td><td style="text-align:right;">${fmt2(totals.grandTotal)} €</td></tr>
+    </table>
+
+    ${zeroNote? `<p><b>${t('vatNote')}</b> ${zeroNote}</p>`:''}
+    ${$('i_notes').value.trim()? `<p><b>${t('extraInfo')}</b> ${$('i_notes').value.trim()}</p>`:''}
+
+    <div class="payment-block">
+      <div class="info">
+        <h3>${t('paymentInfoHeading')}</h3>
+        <table class="meta-table">
+          <tr><td>${t('payee')}</td><td>${s.name}</td></tr>
+          <tr><td>${t('ibanRow')}</td><td>FI${ibanNumeric.slice(0,2)} ${ibanNumeric.slice(2).match(/.{1,4}/g).join(' ')}</td></tr>
+          ${s.bic? `<tr><td>${t('bicRow')}</td><td>${s.bic}</td></tr>`:''}
+          <tr><td>${t('refRow')}</td><td>${reftype==='rf'? refout : refout.match(/.{1,5}/g).join(' ')}</td></tr>
+          <tr><td>${t('dueDate')}</td><td>${dateFi($('i_duedate').value)}</td></tr>
+          <tr><td>${t('amountRow')}</td><td><b>${fmt2(totals.grandTotal)} €</b></td></tr>
+        </table>
+      </div>
+      <div class="barcode-wrap">
+        ${barcodeOk? '<svg id="barcodeSvg"></svg>' : `<div class="note">${barcodeMsg}</div>`}
+      </div>
+    </div>
+  `;
+  $('invoiceDoc').innerHTML = doc;
+
+  if(barcodeOk){
+    try{
+      JsBarcode('#barcodeSvg', barcodeData, {format:'CODE128C', displayValue:false, height:60, width:2, margin:10});
+    }catch(e){
+      document.querySelector('.barcode-wrap').innerHTML = '<div class="note">'+t('barcodeFail')+e.message+'</div>';
+    }
+  }
+});
+
+$('printInvoice').addEventListener('click', ()=> window.print());
+
+$('bumpNumber').addEventListener('click', ()=>{
+  const n = nextInvoiceNumber();
+  bumpInvoiceCounter(n.year);
+  const invoices = LS.get('invoices', []);
+  invoices.push({number: $('i_number').value, date: $('i_date').value, total: $('totalsTable').textContent, savedAt: new Date().toISOString()});
+  LS.set('invoices', invoices);
+  $('i_number').value=''; $('i_refbase').value='';
+  populateInvoiceDefaults();
+  alert(t('bumpAlert'));
+});
+
+/* ================= INIT ================= */
+(function initLang(){
+  const saved = LS.get('lang', 'fi');
+  applyLang(saved);
+})();
+loadSeller();
+renderCustomerList();
+populateCustomerSelect();
+addLineRow();
+populateInvoiceDefaults();
+recalcTotals();
+</script>
+</body>
+</html>

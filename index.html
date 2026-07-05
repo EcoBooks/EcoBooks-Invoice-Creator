@@ -1233,6 +1233,31 @@ $('bumpNumber').addEventListener('click', ()=>{
 migrateOldSchema();
 renderCompanySelect();
 loadSeller();
+
+/* ================= URL-based seller prefill (ecokirja) ================= */
+// Lets a shared link like ...#ecokirja=<base64 JSON> pre-fill the Seller
+// (company) details form automatically. The payload lives only in the URL
+// fragment, which browsers never send to any server, so it stays entirely
+// client-side. This runs after the storage layer and loadSeller() above so
+// it can safely start a fresh (unsaved) company profile instead of
+// overwriting whatever company is already active on this device — the
+// person opening the link still reviews the fields and clicks
+// "Save company details" to keep them.
+(function(){
+  var m = location.hash.match(/ecokirja=([^&]+)/); if(!m) return;
+  try{
+    var s = JSON.parse(decodeURIComponent(escape(atob(m[1]))));
+    setActiveCompanyId(null);
+    renderCompanySelect();
+    var set=function(id,v){var el=document.getElementById(id); if(el&&v){el.value=v; el.dispatchEvent(new Event('input',{bubbles:true}));}};
+    set('s_name', s.name); set('s_ytunnus', s.ytunnus); set('s_street', s.street);
+    set('s_zipcity', s.postal); set('s_country', s.country); set('s_phone', s.phone);
+    set('s_email', s.email); set('s_web', s.website); set('s_iban', s.iban); set('s_bic', s.bic);
+    updateVatIdField();
+    validateSellerFields();
+  }catch(e){}
+})();
+
 renderCustomerList();
 populateCustomerSelect();
 addLineRow();
